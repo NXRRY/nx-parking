@@ -3,22 +3,34 @@ Config.notifyType = 'ox' -- Options: 'qb', 'okok', 'chat', 'ox'
 Config.Debug = false
 
 Config.ParkingZones = {
-    -- {
-    --     name = "parking_square_1",
-    --     points = {
-    --         vector2(-1437.83, -2781.57),
-    --         vector2(-1422.40, -2781.57),
-    --         vector2(-1422.40, -2796.24),
-    --         vector2(-1437.83, -2796.24)
-    --     },
-    --     minZ = 10.0,
-    --     maxZ = 30.0,
-    --     debug = true,
-    --     allowJobs = {
-    --         ['ambulance'] = 0,
-    --         ['police'] = 0,
-    --     }
-    -- },
+    {
+        name = "parking_square_1",
+        points = {
+            vector2(-1437.83, -2781.57),
+            vector2(-1422.40, -2781.57),
+            vector2(-1422.40, -2796.24),
+            vector2(-1437.83, -2796.24)
+        },
+        minZ = 10.0,
+        maxZ = 30.0,
+        debug = true,
+        allowJobs = {
+            ['ambulance'] = true,
+            ['police'] = true
+        }
+    },
+    {
+        name = "parking_mall_2",
+        points = {
+            vector2(-1415.66, -2781.17),
+            vector2(-1400.23, -2781.17),
+            vector2(-1400.23, -2795.84),
+            vector2(-1415.66, -2795.84)
+        },
+        minZ = 10.0,
+        maxZ = 30.0,
+        debug = true,
+    },
 }
 
 Config.Strings = {
@@ -41,7 +53,9 @@ Config.Strings = {
     ['spawn_success'] = 'Vehicle [%s] has arrived.',
     ['not_parked_here'] = 'This vehicle is not parked here.',
     ['no_parking_zone'] = 'You cannot park here! This area is a no-parking zone.',
-
+    ['no_parking_zone_all'] = '🚫 **NO PARKING ZONE** : All vehicles are strictly prohibited',
+    ['no_parking_zone_jobs'] = '⚠️ **RESTRICTED AREA** : Authorized for [ %s ] only',
+    
     -- Progress Bar Labels
     ['prog_parking'] = 'Saving parking location...',
     ['prog_unparking'] = 'Unlocking vehicle...',
