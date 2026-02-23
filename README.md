@@ -9,12 +9,15 @@ A high-performance **Street Parking System** for FiveM designed for realism and 
 ---
 
 ## 📺 System Showcase
+
+
 <div align="center">
-  <a href="https://streamable.com/cx1j9w">
-    <img src="https://chatgpt.com/backend-api/estuary/content?id=file_00000000e3b072069ffdda7056617cd8&ts=492182&p=fs&cid=1&sig=8f79b098de913a6eb0bd5741ba1845b90fa5174949fdde562fde9e8d9f03609f&v=0" width="100%" />
-    <br/>
-    <b>🎬 Click here to watch the full Video Demonstration on Streamable</b>
-  </a>
+
+[![NXRRY Parking System](images/showcase.png)](https://streamable.com/cx1j9w)
+
+🎬 Click the image above to watch the full Video Demonstration.
+
+
 </div>
 
 ---
