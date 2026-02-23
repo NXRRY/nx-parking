@@ -20,5 +20,6 @@ server_script {
 client_scripts {
     '@PolyZone/client.lua',
     '@PolyZone/BoxZone.lua',
-    'client/main.lua'
+    'client/main.lua',
+    'client/zone.lua'
 }
