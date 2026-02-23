@@ -4,17 +4,17 @@ local QBCore = exports['qb-core']:GetCoreObject()
 --               Helper Functions
 -- ==========================================
 
-function notify(text, type)
+function notify(text, type, timeout)
     if Config.notifyType == 'ox' then
         lib.notify({ 
             title = Config.Strings['menu_title'], 
             description = text, 
             type = type,
             position = 'bottom-center',
-            duration = 5000,
+            duration = timeout or 5000,
         })
     elseif Config.notifyType == 'qb' then
-        TriggerEvent('QBCore:Notify', text, type)
+        TriggerEvent('QBCore:Notify', text, type, timeout or 5000)
     elseif Config.notifyType == 'chat' then
         local chatTheme = {
             ['error']   = { color = {255, 50, 50},  icon = '🚨', title = 'SYSTEM ERROR' },
@@ -31,7 +31,7 @@ function notify(text, type)
             }
         })
     else
-        TriggerEvent('QBCore:Notify', text, type)
+        TriggerEvent('QBCore:Notify', text, type, timeout or 5000)
     end
 end
 
@@ -47,7 +47,6 @@ RegisterNetEvent('parking:client:parkVehicle', function()
     end
 
     if isInsideParkingZone then
-        notify(Config.Strings['no_parking_zone'], 'error')
         return
     end
 
