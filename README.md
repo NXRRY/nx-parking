@@ -47,6 +47,8 @@ ADD COLUMN IF NOT EXISTS `rotation` TEXT DEFAULT NULL,
 ADD COLUMN IF NOT EXISTS `parking` LONGTEXT DEFAULT NULL,
 
 
+```
+
 ## 🚀 Update Logs & Patch Notes
 
 ### [v0.1.0] - Initial Base System
