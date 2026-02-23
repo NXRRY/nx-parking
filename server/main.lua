@@ -17,6 +17,52 @@ QBCore.Functions.CreateCallback('parking:server:checkOwnership', function(source
     end)
 end)
 
+QBCore.Functions.CreateCallback('parking:server:getVehicles', function(source, cb) -- เพิ่ม cb เข้ามา
+    local Player = QBCore.Functions.GetPlayer(source)
+    if not Player then return cb({}) end -- ป้องกัน Error ถ้าหาผู้เล่นไม่เจอ
+
+    local citizenid = Player.PlayerData.citizenid
+    local vehicles = {}
+    if Config.Debug then
+        print('[Parking Debug] Fetching vehicles for CitizenID: ' .. citizenid)
+    end
+
+    -- ใช้ MySQL.query.await ได้ปกติ (ถ้าใช้ oxmysql)
+    local result = MySQL.query.await('SELECT * FROM player_vehicles WHERE citizenid = ?', {citizenid})
+
+    if result then
+        for i = 1, #result do
+            local data = result[i]
+            
+            -- ป้องกัน Error กรณี mods ใน DB เป็นค่าว่าง
+            local mods = data.mods and json.decode(data.mods) or {}
+            local coords = data.coords and json.decode(data.coords) or {x = 0, y = 0, z = 0}
+            local rot = data.rotation and json.decode(data.rotation) or {x = 0, y = 0, z = 0}
+
+            table.insert(vehicles, {
+                plate = data.plate,
+                vehicle = data.vehicle,
+                state = data.state,
+                hash = data.hash,
+                mods = mods,
+                -- ตรวจสอบชื่อ Column ใน DB ดีๆ นะครับ (ปกติ QBCore มักจะเก็บใน mods ไม่ได้แยก column engineHealth)
+                -- ถ้าไม่มี column แยก ให้ดึงจาก mods แทน
+                engine = data.engineHealth or (mods.engineHealth or 1000.0),
+                body = data.bodyHealth or (mods.bodyHealth or 1000.0),
+                fuel = data.fuel or (mods.fuelLevel or 100.0),
+                -- แปลงกลับเป็น vector3 เพื่อให้ฝั่ง Client ใช้งานได้ทันที
+                coords = vector3(coords.x, coords.y, coords.z),
+                rotation = vector3(rot.x, rot.y, rot.z),
+            })
+        end
+    end
+    if Config.Debug then
+        print('[Parking Debug] Retrieved ' .. #vehicles .. ' vehicles for CitizenID: ' .. citizenid)
+    end
+    cb(vehicles) -- ส่งค่ากลับผ่าน cb
+end)
+
+
 -- ==========================================
 --              Server Events
 -- ==========================================
@@ -70,57 +116,5 @@ RegisterNetEvent('parking:server:updateVehicleState', function(state, plate)
     MySQL.update('UPDATE player_vehicles SET state = ?, depotprice = ? WHERE plate = ? AND citizenid = ?', { state, 0, plate, Player.PlayerData.citizenid })
 end)
 
-QBCore.Functions.CreateCallback('parking:getVehicles', function(source, cb) -- เพิ่ม cb เข้ามา
-    local Player = QBCore.Functions.GetPlayer(source)
-    if not Player then return cb({}) end -- ป้องกัน Error ถ้าหาผู้เล่นไม่เจอ
 
-    local citizenid = Player.PlayerData.citizenid
-    local vehicles = {}
-    
-    print('[Parking Debug] Fetching vehicles for CID: ' .. citizenid)
-
-    -- ใช้ MySQL.query.await ได้ปกติ (ถ้าใช้ oxmysql)
-    local result = MySQL.query.await('SELECT * FROM player_vehicles WHERE citizenid = ?', {citizenid})
-
-    if result then
-        for i = 1, #result do
-            local data = result[i]
-            
-            -- ป้องกัน Error กรณี mods ใน DB เป็นค่าว่าง
-            local mods = data.mods and json.decode(data.mods) or {}
-            local coords = data.coords and json.decode(data.coords) or {x = 0, y = 0, z = 0}
-            local rot = data.rotation and json.decode(data.rotation) or {x = 0, y = 0, z = 0}
-
-            table.insert(vehicles, {
-                plate = data.plate,
-                vehicle = data.vehicle,
-                state = data.state,
-                hash = data.hash,
-                mods = mods,
-                -- ตรวจสอบชื่อ Column ใน DB ดีๆ นะครับ (ปกติ QBCore มักจะเก็บใน mods ไม่ได้แยก column engineHealth)
-                -- ถ้าไม่มี column แยก ให้ดึงจาก mods แทน
-                engine = data.engineHealth or (mods.engineHealth or 1000.0),
-                body = data.bodyHealth or (mods.bodyHealth or 1000.0),
-                fuel = data.fuel or (mods.fuelLevel or 100.0),
-                -- แปลงกลับเป็น vector3 เพื่อให้ฝั่ง Client ใช้งานได้ทันที
-                coords = vector3(coords.x, coords.y, coords.z),
-                rotation = vector3(rot.x, rot.y, rot.z),
-            })
-        end
-    end
-    print('[Parking Debug] Found ' .. #vehicles .. ' vehicles for CID: ' .. citizenid)
-    cb(vehicles) -- ส่งค่ากลับผ่าน cb
-end)
-
-QBCore.Functions.CreateCallback('qb-garages:server:spawnvehicle', function(source, cb, plate, vehicle, coords)
-    local vehType = QBCore.Shared.Vehicles[vehicle] and QBCore.Shared.Vehicles[vehicle].type or GetVehicleTypeByModel(vehicle)
-    local veh = CreateVehicleServerSetter(GetHashKey(vehicle), vehType, coords.x, coords.y, coords.z, coords.w)
-    local netId = NetworkGetNetworkIdFromEntity(veh)
-    SetVehicleNumberPlateText(veh, plate)
-    local vehProps = {}
-    local result = MySQL.rawExecute.await('SELECT mods FROM player_vehicles WHERE plate = ?', { plate })
-    if result and result[1] then vehProps = json.decode(result[1].mods) end
-    OutsideVehicles[plate] = { netID = netId, entity = veh }
-    cb(netId, vehProps, plate)
-end)
 
