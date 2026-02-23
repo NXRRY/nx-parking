@@ -1,6 +1,25 @@
 Config = {}
-Config.notifyType = 'chat' -- Options: 'qb', 'okok', 'chat', 'ox'
+Config.notifyType = 'ox' -- Options: 'qb', 'okok', 'chat', 'ox'
 Config.Debug = false
+
+Config.ParkingZones = {
+    -- {
+    --     name = "parking_square_1",
+    --     points = {
+    --         vector2(-1437.83, -2781.57),
+    --         vector2(-1422.40, -2781.57),
+    --         vector2(-1422.40, -2796.24),
+    --         vector2(-1437.83, -2796.24)
+    --     },
+    --     minZ = 10.0,
+    --     maxZ = 30.0,
+    --     debug = true,
+    --     allowJobs = {
+    --         ['ambulance'] = 0,
+    --         ['police'] = 0,
+    --     }
+    -- },
+}
 
 Config.Strings = {
     -- Notifications
@@ -21,6 +40,7 @@ Config.Strings = {
     ['spawn_cancel'] = 'Vehicle retrieval cancelled.',
     ['spawn_success'] = 'Vehicle [%s] has arrived.',
     ['not_parked_here'] = 'This vehicle is not parked here.',
+    ['no_parking_zone'] = 'You cannot park here! This area is a no-parking zone.',
 
     -- Progress Bar Labels
     ['prog_parking'] = 'Saving parking location...',
