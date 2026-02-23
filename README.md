@@ -45,35 +45,33 @@ ALTER TABLE `player_vehicles`
 ADD COLUMN IF NOT EXISTS `coords` TEXT DEFAULT NULL,
 ADD COLUMN IF NOT EXISTS `rotation` TEXT DEFAULT NULL,
 ADD COLUMN IF NOT EXISTS `parking` LONGTEXT DEFAULT NULL,
-
-
 ```
-
 ## 🚀 Update Logs & Patch Notes
 
 ### [v0.1.0] - Initial Base System
-> *ระบบเริ่มต้น: การจัดการข้อมูลพื้นฐานและการจัดเก็บ*
+> *Core System: Basic parking functionality and data persistence*
 
-- **Vehicle Persistence:** เพิ่มระบบบันทึกข้อมูลรถเข้า Database `player_vehicles` เมื่อทำการจอด
-- **Meta Data Tracking:** รองรับการเก็บข้อมูล Engine Health, Body Health, และ Fuel Level
-- **Spatial Data:** ระบบบันทึกพิกัดแบบละเอียดประกอบด้วย `x, y, z` และองศาของรถ (`rotation`)
-- **State Management:** เพิ่มสถานะ `state` สำหรับตรวจสอบว่ารถถูกจอดอยู่ในระบบ (Stored) หรือไม่
+* **Vehicle Persistence:** Implemented a system to save vehicle data into the `player_vehicles` database upon parking.
+* **Metadata Tracking:** Added support for tracking `engine_health`, `body_health`, and `fuel_level` to ensure vehicle state is preserved.
+* **Spatial Data:** Implemented detailed coordinate logging including `x, y, z` positions and vehicle `rotation` (heading).
+* **State Management:** Introduced a `state` column to monitor whether a vehicle is currently stored (1) or unparked (0).
 
 ---
 
 ### [v0.1.1] - Security & Stability Patch
-> *การเพิ่มความปลอดภัย ป้องกันการเสกรถ และแก้ไขปัญหา Network ID*
+> *Security Hardening: Exploit prevention and Network ID stabilization*
 
-- **Enhanced Security:** - เพิ่มระบบ **Server-Side Ownership Check** ตรวจสอบความเป็นเจ้าของผ่าน `citizenid` และ `plate` ทุกครั้งที่มีการบันทึกข้อมูล
-    - เพิ่มการตรวจสอบระยะห่าง (**Distance Check**) ทั้งฝั่ง Client และ Server (รัศมี 20-25 เมตร) เพื่อป้องกันการเจาะระบบเพื่อเบิกรถระยะไกล
-- **Network ID Synchronization:**
-    - แก้ไข Warning `no object by ID 0` โดยการใช้ Loop ตรวจสอบสถานะ Network จนกว่ารถจะถูกลงทะเบียนในระบบสำเร็จก่อนส่งข้อมูลไป Server
-- **Precision Spawning:**
-    - ปรับปรุง Logic การสร้างรถให้ทำที่ฝั่ง Client (Client-Side Spawning) เพื่อความแม่นยำของ **Vehicle Mods** และ **Colors** 100%
-    - เพิ่มระบบ **Entity Sync Waiting** เพื่อรอให้รถมีตัวตนในโลกของ Client ก่อนทำการใส่ของแต่งรถ
-- **Visual & Logic Polish:**
-    - เพิ่มเอฟเฟกต์ **Fade-In (Alpha 0-255)** เพื่อความสวยงามขณะเบิกรถ
-    - ปรับปรุงระบบ **Duplicate Check** ตรวจสอบทะเบียนรถบนแผนที่ก่อนอนุญาตให้เบิก เพื่อป้องกันการเสกรถซ้อน
-    - บูรณาการระบบกุญแจ (`vehiclekeys`) และระบบน้ำมัน (`qb-fuel`) ให้ทำงานร่วมกันอย่างสมบูรณ์
+* **Enhanced Security:**
+    * **Server-Side Ownership Validation:** Added strict verification of `citizenid` and `plate` on the server-side to prevent unauthorized players from spawning or modifying vehicles they don't own.
+    * **Distance Verification:** Implemented a dual-layered **Distance Check** (20-25m radius) on both Client and Server to prevent remote-spawning exploits.
+* **Network ID Synchronization:**
+    * **ID 0 Warning Fix:** Resolved the `no object by ID 0` warning by implementing a synchronous loop that waits for the entity to be fully registered on the network before sending data to the server.
+* **Precision Spawning & Reliability:**
+    * **Client-Side Spawning:** Optimized the spawning logic to execute on the client-side, ensuring 100% accuracy for **Vehicle Mods**, **Liveries**, and **Colors**.
+    * **Entity Sync Logic:** Added a "Wait for Entity" mechanism to ensure the vehicle exists in the client's world before applying properties and modifications.
+* **Visual & Logic Polish:**
+    * **Smooth Fade-In:** Added a professional **Alpha Transition (0-255)** effect when unparking vehicles.
+    * **Duplicate Prevention:** Improved the **Plate Check** logic to scan the map for existing vehicles before spawning, preventing duplicate entities.
+    * **System Integration:** Fully integrated with `qb-vehiclekeys` for automatic key assignment and `qb-fuel` for real-time fuel synchronization.
 
 ---
