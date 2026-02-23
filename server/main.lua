@@ -55,42 +55,117 @@ QBCore.Functions.CreateCallback('parking:server:getVehicles', function(source, c
     cb(vehicles) 
 end)
 
+QBCore.Functions.CreateCallback('parking:server:RequestSpawnVehicle', function(source, cb, data)
+    local src = source
+    local Player = QBCore.Functions.GetPlayer(src)
+    if not Player or not data then return cb(false) end
+
+    local plate = QBCore.Shared.Trim(data.plate)
+    local citizenid = Player.PlayerData.citizenid
+
+    -- [SECURITY 1] เช็คความเป็นเจ้าของ
+    local isOwner = MySQL.scalar.await('SELECT 1 FROM player_vehicles WHERE plate = ? AND citizenid = ?', {
+        plate, citizenid
+    })
+
+    if not isOwner then
+        print(string.format("[BAN RISK] %s tried to spawn vehicle %s without ownership!", GetPlayerName(src), plate))
+        return cb(false)
+    end
+
+    -- [SECURITY 2] เช็คระยะห่าง
+    local pPed = GetPlayerPed(src)
+    local pCoords = GetEntityCoords(pPed)
+    local vCoords = vector3(data.coords.x, data.coords.y, data.coords.z)
+    
+    if #(pCoords - vCoords) > 25.0 then 
+        return cb(false)
+    end
+
+    -- [ACTION] สปาวน์รถ (Server-side)
+    QBCore.Functions.SpawnVehicle(src, data.vehicle or data.model, vCoords, false, function(veh)
+        local netId = NetworkGetNetworkIdFromEntity(veh)
+        
+        -- อัปเดตสถานะใน DB ทันที
+        MySQL.update('UPDATE player_vehicles SET state = 0 WHERE plate = ? AND citizenid = ?', {
+            plate, citizenid
+        })
+
+        -- ส่ง netId กลับไปให้ Client
+        cb(netId)
+    end)
+end)
 
 -- ==========================================
 --              Server Events
 -- ==========================================
-RegisterNetEvent('parking:server:UpdateVehicleData', function(data)
+RegisterNetEvent('parking:server:UpdateVehicleData', function(netId, state)
     local src = source
     local Player = QBCore.Functions.GetPlayer(src)
-    if not Player or not data or not data.plate then return end
-    local plate = data.plate
-    local citizenid = Player.PlayerData.citizenid
-    if Config.Debug then
-        print('[Parking Debug] Data: ' .. json.encode(data))
+    if not Player or not netId then return end
+
+    -- [Validation] ตรวจสอบว่า state ที่ส่งมาถูกต้อง (ป้องกันคนส่งเลขมั่ว)
+    if state ~= 0 and state ~= 1 then 
+        print(string.format('[Security Warning] %s tried to send invalid state: %s', GetPlayerName(src), tostring(state)))
+        return 
     end
-    local parkingJson = json.encode(data)
-    MySQL.Async.execute('UPDATE player_vehicles SET parking = @parking, fuel = @fuel, engine = @engine, body = @body, rotation = @rotation, coords = @coords WHERE plate = @plate', {
-        ['@parking'] = parkingJson,
-        ['@hash']    = data.model,
-        ['@model']   = data.modelName,
-        ['@mods']    = json.encode(data.mods),
-        ['@engine']  = data.engineHealth,
-        ['@body']    = data.bodyHealth,
-        ['@rotation'] = json.encode(data.rotation), 
-        ['@coords'] = json.encode(data.coords), 
-        ['@plate']   = plate
-    }, function(rowsChanged)
-        if rowsChanged > 0 then
-            print('[Parking Debug] Successfully updated parking data for plate: ' .. plate)
-        else
-            print('[Parking Debug] Failed to update parking data for plate: ' .. plate)
+
+    local vehicle = NetworkGetEntityFromNetworkId(netId)
+    if DoesEntityExist(vehicle) then
+        local plate = QBCore.Shared.Trim(GetVehicleNumberPlateText(vehicle))
+        local citizenid = Player.PlayerData.citizenid
+        
+        -- [Security Check 1] ตรวจสอบระยะห่าง (ห้ามอยู่ไกลเกิน 10 เมตร)
+        local dist = #(GetEntityCoords(GetPlayerPed(src)) - GetEntityCoords(vehicle))
+        if dist > 10.0 then return end
+
+        -- [Security Check 2] ตรวจสอบความเป็นเจ้าของ
+        local isOwner = MySQL.scalar.await('SELECT 1 FROM player_vehicles WHERE plate = ? AND citizenid = ?', {
+            plate, citizenid
+        })
+
+        if not isOwner then
+            print(string.format('[Security Warning] %s tried to modify vehicle %s without ownership!', GetPlayerName(src), plate))
+            return 
         end
-    end)
+
+        -- เตรียมข้อมูลสำหรับการบันทึก
+        local engine = GetVehicleEngineHealth(vehicle)
+        local body = GetVehicleBodyHealth(vehicle)
+        local coords = GetEntityCoords(vehicle)
+        local rotation = GetEntityRotation(vehicle)
+        local fuel = Entity(vehicle).state.fuel or 100 
+
+        local parkingData = {
+            plate = plate,
+            engineHealth = engine,
+            bodyHealth = body,
+            fuel = fuel,
+            coords = coords,
+            rotation = rotation,
+            citizenid = citizenid,
+            lastUpdate = os.time()
+        }
+
+        -- อัปเดต Database
+        -- หาก state = 1 (จอด) จะบันทึก coords/rotation
+        -- หาก state = 0 (เอารถออก) จะเปลี่ยนแค่สถานะ หรือล้างค่า coords ตามต้องการ
+        MySQL.Async.execute('UPDATE player_vehicles SET parking = @parking, fuel = @fuel, engine = @engine, body = @body, rotation = @rotation, coords = @coords, state = @state WHERE plate = @plate AND citizenid = @cid', {
+            ['@parking']  = json.encode(parkingData),
+            ['@fuel']     = fuel,
+            ['@engine']   = engine,
+            ['@body']     = body,
+            ['@rotation'] = json.encode(rotation), 
+            ['@coords']   = json.encode(coords), 
+            ['@plate']    = plate,
+            ['@cid']      = citizenid,
+            ['@state']    = state -- ใช้ state ที่ส่งมาจาก Client (0 หรือ 1)
+        }, function(rowsChanged)
+            if rowsChanged > 0 and Config.Debug then
+                local status = (state == 1) and "PARKED" or "UNPARKED"
+                print(string.format('[Parking Debug] %s | Plate: %s', status, plate))
+            end
+        end)
+    end
 end)
 
-RegisterNetEvent('parking:server:updateVehicleState', function(state, plate)
-    local src = source
-    local Player = QBCore.Functions.GetPlayer(src)
-    if not Player then return end
-    MySQL.update('UPDATE player_vehicles SET state = ?, depotprice = ? WHERE plate = ? AND citizenid = ?', { state, 0, plate, Player.PlayerData.citizenid })
-end)
