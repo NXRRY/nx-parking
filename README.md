@@ -1,45 +1,44 @@
-# 🚗 DADDT Parking System (QBCore)
+# 🚗 NXRRY Parking System (QBCore)
 
 ![Version](https://img.shields.io/badge/Version-0.1.0-blue.svg)
 ![Framework](https://img.shields.io/badge/Framework-QBCore-orange.svg)
 ![Dependency](https://img.shields.io/badge/Dependency-ox__lib-red.svg)
 
-ระบบจอดรถข้างทาง (Street Parking System) สำหรับ FiveM ที่ออกแบบมาให้มีความสมจริงและประสิทธิภาพสูง บันทึกสถานะรถทุกอย่างลง Database เพื่อให้รถคงอยู่ที่จุดเดิมแม้ผู้เล่นจะออกจากเซิร์ฟเวอร์ไปแล้ว
+A high-performance **Street Parking System** for FiveM designed for realism and efficiency. This system saves the complete vehicle state to the database, ensuring vehicles remain at their parked location even after players disconnect from the server.
 
 ---
 
-## 🌟 คุณสมบัติ (Features)
+## 🌟 Features
 
-* **Real-time Saving:** บันทึกพิกัด (Coords), องศา (Rotation), ค่าน้ำมัน, และสภาพเครื่องยนต์ลงฐานข้อมูลทันที
-* **Security System:** เมื่อจอดรถ ระบบจะทำการ Lock ประตู, Freeze ตำแหน่ง และตั้งค่า Invincible เพื่อป้องกันการถูกขโมยหรือถูกทำลายขณะจอด
-* **Visual Progress:** ใช้ `ox_lib` ในการแสดง Progress Circle เพื่อความสวยงามและเพิ่มฟีลลิ่งการทำ RP (Roleplay)
-* **GPS Tracking:** ระบบปักหมุดนำทางหากผู้เล่นอยู่ห่างจากรถที่จอดไว้
-* **Ownership Check:** ตรวจสอบเจ้าของรถจากฐานข้อมูลก่อนทำการจอด เพื่อป้องกันการจอดรถ NPC หรือรถผิดกฎหมาย
+* **Real-time Saving:** Instantly saves Coordinates (Coords), Rotation, Fuel levels, and Engine/Body health to the database.
+* **Security System:** When parked, the system automatically locks doors, freezes position, and sets the vehicle to Invincible to prevent theft or destruction.
+* **Visual Progress:** Utilizes `ox_lib` to display Progress Circles for a sleek UI and enhanced Roleplay (RP) immersion.
+* **GPS Tracking:** Integrated waypoint system to guide players back to their parked vehicles if they are far away.
+* **Ownership Check:** Verifies vehicle ownership via the database before allowing parking to prevent the parking of NPC or unauthorized vehicles.
 
 ---
 
-## 🛠 คำสั่งการใช้งาน (Commands)
+## 🛠 Commands
 
-| คำสั่ง | การทำงาน |
+| Command | Function |
 | :--- | :--- |
-
-| `/openparkingmenu` | เปิดเมนูหลักสำหรับจัดการรถ (Default: **F6**) |
-
----
-
-## 📂 โครงสร้างทรัพยากร (Resource Structure)
-
-* `config.lua`: ตั้งค่าการแจ้งเตือน (Notify) และ Debug Mode
-* `fxmanifest.lua`: กำหนดการโหลด Script และ Dependencies ต่างๆ
-* `client/main.lua`: ควบคุม Logic ฝั่งผู้เล่น, เมนู UI และการ Spawn รถ
-* `server/main.lua`: จัดการการเขียน/อ่าน Database และ Server Callbacks
+| `/openparkingmenu` | Opens the main menu for vehicle management (Default: **F6**) |
 
 ---
 
-## 💾 การติดตั้ง (Installation)
+## 📂 Resource Structure
+
+* `config.lua`: Configuration for notifications (Notify) and Debug Mode.
+* `fxmanifest.lua`: Defines script loading and resource dependencies.
+* `client/main.lua`: Handles player-side logic, UI menus, and vehicle spawning.
+* `server/main.lua`: Manages database read/write operations and Server Callbacks.
+
+---
+
+## 💾 Installation
 
 ### 1. SQL Setup
-นำคำสั่งด้านล่างไป Execute ในฐานข้อมูลของคุณ (ตาราง `player_vehicles`):
+Execute the following command in your database (Table: `player_vehicles`):
 
 ```sql
 ALTER TABLE `player_vehicles` 
