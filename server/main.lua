@@ -69,9 +69,8 @@ RegisterNetEvent('parking:server:UpdateVehicleData', function(data)
         print('[Parking Debug] Data: ' .. json.encode(data))
     end
     local parkingJson = json.encode(data)
-    MySQL.Async.execute('UPDATE player_vehicles SET parking = @parking, fuel = @fuel, engine = @engine, body = @body, rotation = @rotation, coords = @coords, parkingcitizenid = @parkingcitizenid WHERE plate = @plate', {
+    MySQL.Async.execute('UPDATE player_vehicles SET parking = @parking, fuel = @fuel, engine = @engine, body = @body, rotation = @rotation, coords = @coords WHERE plate = @plate', {
         ['@parking'] = parkingJson,
-        ['@parkingcitizenid'] = data.parkingcitizenid,
         ['@hash']    = data.model,
         ['@model']   = data.modelName,
         ['@mods']    = json.encode(data.mods),
