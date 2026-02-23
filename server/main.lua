@@ -168,4 +168,3 @@ RegisterNetEvent('parking:server:UpdateVehicleData', function(netId, state)
         end)
     end
 end)
-
