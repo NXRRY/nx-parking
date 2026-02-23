@@ -76,7 +76,6 @@ end
 RegisterNetEvent('parking:client:parkVehicle', function()
     local ped = PlayerPedId()
     local veh = GetVehiclePedIsIn(ped, false)
-
     if veh == 0 then
         notify(Config.Strings['not_in_veh'], 'error')
         return
@@ -86,65 +85,61 @@ RegisterNetEvent('parking:client:parkVehicle', function()
         notify(Config.Strings['not_driver'], 'error')
         return
     end
-
-    local plate = QBCore.Functions.GetPlate(veh)
-    local data  = dataparking()
-
-    if not data then return end
-
-    QBCore.Functions.TriggerCallback('parking:server:checkOwnership', function(hasOwner)
-        if hasOwner then
-            if lib.progressCircle({
-                duration = 5000,
-                label = Config.Strings['prog_parking'],
-                position = 'bottom',
-                useWhileDead = false,
-                canCancel = true,
-                disable = { car = true, move = true, combat = true }
-            }) then
-                TriggerServerEvent('parking:server:UpdateVehicleData', data)
-                TriggerServerEvent('parking:server:updateVehicleState', 1, data.plate)
-
-                SetVehicleEngineOn(veh, false, false, true)
-                SetVehicleHandbrake(veh, true)
-                TaskLeaveVehicle(ped, veh, 1)
-
-                SetTimeout(6000, function()
-                    if DoesEntityExist(veh) then
-                        SetVehicleDoorsLocked(veh, 2)
-                        FreezeEntityPosition(veh, true)
-                        SetEntityInvincible(veh, true)
-                        notify(Config.Strings['park_success'], 'success')
-                    end
-                end)
-            else
-                notify(Config.Strings['park_cancel'], 'error')
+    if GetEntitySpeed(veh) * 3.6 > 5 then
+        notify(Config.Strings['slow_down'], 'error')
+        return
+    end
+    if lib.progressCircle({
+        duration = 5000,
+        label = Config.Strings['prog_parking'],
+        position = 'bottom',
+        useWhileDead = false,
+        canCancel = true,
+        disable = { car = true, move = true, combat = true }
+    }) then
+        local netId = NetworkGetNetworkIdFromEntity(veh)
+        SetVehicleEngineOn(veh, false, false, true)
+        SetVehicleHandbrake(veh, true)
+        TaskLeaveVehicle(ped, veh, 1)
+        local netId = NetworkGetNetworkIdFromEntity(veh)
+        TriggerServerEvent('parking:server:UpdateVehicleData', netId, 1)
+        SetTimeout(3000, function() 
+            if DoesEntityExist(veh) then
+                SetVehicleDoorsLocked(veh, 2)
+                FreezeEntityPosition(veh, true)
+                SetEntityInvincible(veh, true)
+                notify(Config.Strings['park_success'], 'success')
             end
-        else
-            notify(Config.Strings['not_owner'], 'error')
-        end
-    end, plate)
+        end)
+    else
+        notify(Config.Strings['park_cancel'], 'error')
+    end
 end, false)
 
 -- ==========================================
 --               Unparking Command
 -- ==========================================
 RegisterNetEvent('parking:client:unparkVehicle', function()
-    local data = dataparking()
-
-    if not data or not DoesEntityExist(data.entity) then
+    local coords = GetEntityCoords(PlayerPedId())
+    local veh = QBCore.Functions.GetClosestVehicle(coords)
+    local dist = #(coords - GetEntityCoords(veh))
+    
+    if veh == 0 or dist > 3.0 then
         notify(Config.Strings['unpark_not_found'], 'error')
         return
     end
 
-    local plate = QBCore.Functions.GetPlate(data.entity)
-
+    if not veh or not DoesEntityExist(veh) then
+        notify(Config.Strings['unpark_not_found'], 'error')
+        return
+    end
+    local plate = QBCore.Shared.Trim(GetVehicleNumberPlateText(veh))
+    local netId = NetworkGetNetworkIdFromEntity(veh)
     QBCore.Functions.TriggerCallback('parking:server:checkOwnership', function(hasOwner)
         if not hasOwner then
             notify(Config.Strings['unpark_not_owner'], 'error')
             return
         end
-
         if lib.progressCircle({
             duration = 3000,
             label = Config.Strings['prog_unparking'],
@@ -154,14 +149,12 @@ RegisterNetEvent('parking:client:unparkVehicle', function()
             disable = { move = true, combat = true },
             anim = { dict = 'anim@mp_player_intmenu@key_fob@', clip = 'fob_click' }
         }) then
-            TriggerServerEvent('parking:server:updateVehicleState', 0, data.plate)
-
-            FreezeEntityPosition(data.entity, false)
-            SetEntityInvincible(data.entity, false)
-            SetVehicleHandbrake(data.entity, false)
-            SetVehicleDoorsLocked(data.entity, 1)
-            SetVehicleEngineOn(data.entity, true, true, false)
-
+            TriggerServerEvent('parking:server:UpdateVehicleData', netId, 0)
+            FreezeEntityPosition(veh, false)
+            SetEntityInvincible(veh, false)
+            SetVehicleHandbrake(veh, false)
+            SetVehicleDoorsLocked(veh, 1)
+            SetVehicleEngineOn(veh, true, true, false)
             notify(Config.Strings['unpark_success'], 'success')
         else
             notify(Config.Strings['unpark_cancel'], 'error')
@@ -230,38 +223,33 @@ end)
 -- ==========================================
 --               Spawn Vehicle Function
 -- ==========================================
-
 function SpawnPlayerVehicle(data)
     local pPed = PlayerPedId()
     local pCoords = GetEntityCoords(pPed)
+    
+    -- [1] Duplicate Check: เหมือนเดิม
     local allVehicles = QBCore.Functions.GetVehicles()
-    local isVehicleOut = false
-    local targetVehicle = nil
-
     for i = 1, #allVehicles do
         local vehicleInMap = allVehicles[i]
         if DoesEntityExist(vehicleInMap) then
             local existingPlate = QBCore.Functions.GetPlate(vehicleInMap)
-            if existingPlate and existingPlate == data.plate then
-                isVehicleOut = true
-                targetVehicle = vehicleInMap
-                break
+            if existingPlate == data.plate then
+                local vehCoords = GetEntityCoords(vehicleInMap)
+                SetNewWaypoint(vehCoords.x, vehCoords.y)
+                notify(string.format(Config.Strings['veh_already_out'], data.plate), 'error')
+                return
             end
         end
     end
 
-    if isVehicleOut and DoesEntityExist(targetVehicle) then
-        local vehCoords = GetEntityCoords(targetVehicle)
-        SetNewWaypoint(vehCoords.x, vehCoords.y)
-        notify(string.format(Config.Strings['veh_already_out'], data.plate), 'error')
-        return
-    end
-
-    if #(pCoords - vector3(data.coords.x, data.coords.y, data.coords.z)) > 20.0 then
+    -- [2] Distance Check
+    local spawnPos = vector3(data.coords.x, data.coords.y, data.coords.z)
+    if #(pCoords - spawnPos) > 20.0 then
         notify(Config.Strings['too_far'], 'error')
         return
     end
 
+    -- [3] Progress Bar
     if not lib.progressCircle({
         duration = 4000,
         label = Config.Strings['prog_spawning'],
@@ -270,52 +258,71 @@ function SpawnPlayerVehicle(data)
         canCancel = true,
         disable = { move = true, combat = true },
         anim = { dict = 'anim@mp_player_intmenu@key_fob@', clip = 'fob_click' }
-    }) then
-        notify(Config.Strings['spawn_cancel'], 'error')
-        return
+    }) then return end
+
+    -- [4] โหลดโมเดลและสร้างรถ (Client-side ชัวร์เรื่องสีสุด)
+    local model = data.vehicle or data.model
+    model = type(model) == 'string' and joaat(model) or model
+    QBCore.Functions.LoadModel(model)
+
+    local heading = data.rotation and data.rotation.z or 0.0
+    local veh = CreateVehicle(model, spawnPos.x, spawnPos.y, spawnPos.z, heading, true, false)
+
+    -- [5] แก้ปัญหา Warning ID 0: รอจนกว่าระบบ Network จะยอมรับรถคันนี้
+    local netId = 0
+    local timeout = 0
+    while netId == 0 and timeout < 100 do
+        netId = NetworkGetNetworkIdFromEntity(veh)
+        Wait(10)
+        timeout = timeout + 1
     end
 
-    local spawnPos = vector3(data.coords.x, data.coords.y, data.coords.z)
-    QBCore.Functions.TriggerCallback('QBCore:Server:SpawnVehicle', function(netId)
-        local veh = NetToVeh(netId)
-        SetEntityAlpha(veh, 0, false)
-        SetEntityCollision(veh, false, false)
-        FreezeEntityPosition(veh, true)
-        SetEntityCoords(veh, spawnPos.x, spawnPos.y, spawnPos.z, false, false, false, true)
+    -- [6] ตั้งค่าสถานะเริ่มต้น
+    SetEntityAlpha(veh, 0, false)
+    SetEntityCollision(veh, false, false)
+    FreezeEntityPosition(veh, true)
+    SetEntityCoords(veh, spawnPos.x, spawnPos.y, spawnPos.z, false, false, false, true)
+    if data.rotation then
         SetEntityRotation(veh, data.rotation.x or 0.0, data.rotation.y or 0.0, data.rotation.z or 0.0, 2, true)
-        
-        local vehicleMods = type(data.mods) == 'string' and json.decode(data.mods) or data.mods
-        if vehicleMods then
-            QBCore.Functions.SetVehicleProperties(veh, vehicleMods)
+    end
+
+    -- [7] ตั้งค่า Mods (ใส่ตรงนี้เพื่อให้สีและของแต่งตรงตาม Database 100%)
+    local vehicleMods = type(data.mods) == 'string' and json.decode(data.mods) or data.mods
+    if vehicleMods then
+        QBCore.Functions.SetVehicleProperties(veh, vehicleMods)
+    end
+
+    -- [8] แจ้ง Server ให้เปลี่ยน State (ส่ง netId ที่ไม่ใช่ 0 ไป)
+    if netId ~= 0 then
+        TriggerServerEvent('parking:server:UpdateVehicleData', netId, 0)
+    end
+
+    -- [9] น้ำมัน, กุญแจ, และเอฟเฟกต์
+    local fuelLevel = data.fuel or data.fuelLevel or 100.0
+    exports['qb-fuel']:SetFuel(veh, fuelLevel)
+    TriggerEvent('vehiclekeys:client:SetOwner', data.plate)
+
+    SetVehicleDoorsLocked(veh, 2)
+    PlayVehicleDoorCloseSound(veh, 1)
+    SetVehicleLights(veh, 2)
+    Wait(150)
+    SetVehicleLights(veh, 0)
+
+    -- [10] Fade In
+    local alpha = 0
+    CreateThread(function()
+        while alpha < 255 do
+            alpha = alpha + 15
+            if alpha > 255 then alpha = 255 end
+            SetEntityAlpha(veh, alpha, false)
+            Wait(30)
         end
-        
-        local fuelLevel = data.fuel or data.fuelLevel or 100.0
-        exports['qb-fuel']:SetFuel(veh, fuelLevel)
-        
-        TriggerServerEvent('parking:server:updateVehicleState', 0, data.plate)
-        TriggerEvent('vehiclekeys:client:SetOwner', data.plate)
-        
-        SetVehicleDoorsLocked(veh, 2)
-        PlayVehicleDoorCloseSound(veh, 1)
-        SetVehicleLights(veh, 2)
-        Wait(150)
-        SetVehicleLights(veh, 0)
-        
-        local alpha = 0
-        CreateThread(function()
-            while alpha < 255 do
-                alpha = alpha + 15
-                if alpha > 255 then alpha = 255 end
-                SetEntityAlpha(veh, alpha, false)
-                Wait(30)
-            end
-            ResetEntityAlpha(veh)
-            SetEntityCollision(veh, true, true)
-            FreezeEntityPosition(veh, false)
-            SetVehicleDoorsLocked(veh, 1)
-        end)
-        notify(string.format(Config.Strings['spawn_success'], data.plate), 'success')
-    end, data.vehicle or data.model, spawnPos, false)
+        ResetEntityAlpha(veh)
+        SetEntityCollision(veh, true, true)
+        FreezeEntityPosition(veh, false)
+    end)
+
+    notify(string.format(Config.Strings['spawn_success'], data.plate), 'success')
 end
 
 -- ==========================================
