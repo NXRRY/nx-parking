@@ -4,13 +4,17 @@ local QBCore = exports['qb-core']:GetCoreObject()
 --               Helper Functions
 -- ==========================================
 
-local function notify(text, type)
+function notify(text, type)
     if Config.notifyType == 'ox' then
-        lib.notify({ title = Config.Strings['menu_title'], description = text, type = type })
+        lib.notify({ 
+            title = Config.Strings['menu_title'], 
+            description = text, 
+            type = type,
+            position = 'bottom-center',
+            duration = 5000,
+        })
     elseif Config.notifyType == 'qb' then
         TriggerEvent('QBCore:Notify', text, type)
-    elseif Config.notifyType == 'okok' then
-        TriggerEvent('okokNotify:Alert', Config.Strings['menu_title'], text, 5000, type)
     elseif Config.notifyType == 'chat' then
         local chatTheme = {
             ['error']   = { color = {255, 50, 50},  icon = '🚨', title = 'SYSTEM ERROR' },
@@ -31,45 +35,6 @@ local function notify(text, type)
     end
 end
 
-local function dataparking()
-    local ped = PlayerPedId()
-    local vehicle = GetVehiclePedIsIn(ped, false)
-
-    if vehicle == 0 or GetPedInVehicleSeat(vehicle, -1) ~= ped then
-        notify(Config.Strings['not_driver'], 'error')
-        return false
-    end
-
-    if (GetEntitySpeed(vehicle) * 3.6) > 5 then
-        notify(Config.Strings['slow_down'], 'error')
-        return false
-    end
-
-    local PlayerData = QBCore.Functions.GetPlayerData()
-    local vehicleData = {
-        parkingcitizenid = PlayerData.citizenid,
-        entity       = vehicle,
-        plate        = GetVehicleNumberPlateText(vehicle),
-        model        = GetEntityModel(vehicle),
-        modelName    = GetLabelText(GetDisplayNameFromVehicleModel(GetEntityModel(vehicle))),
-        mods         = QBCore.Functions.GetVehicleProperties(vehicle),
-        coords       = GetEntityCoords(vehicle),
-        heading      = GetEntityHeading(vehicle),
-        rotation     = GetEntityRotation(vehicle, 2),
-        engineHealth = GetVehicleEngineHealth(vehicle),
-        bodyHealth   = GetVehicleBodyHealth(vehicle),
-        fuelLevel    = GetVehicleFuelLevel(vehicle),
-        locked       = GetVehicleDoorLockStatus(vehicle)
-    }
-
-    if Config.Debug then
-        print("Captured Vehicle Data:")
-        print(json.encode(vehicleData, {indent = true}))
-    end
-
-    return vehicleData
-end
-
 -- ==========================================
 --               Parking Command
 -- ==========================================
@@ -78,6 +43,11 @@ RegisterNetEvent('parking:client:parkVehicle', function()
     local veh = GetVehiclePedIsIn(ped, false)
     if veh == 0 then
         notify(Config.Strings['not_in_veh'], 'error')
+        return
+    end
+
+    if isInsideParkingZone then
+        notify(Config.Strings['no_parking_zone'], 'error')
         return
     end
 
@@ -259,16 +229,11 @@ function SpawnPlayerVehicle(data)
         disable = { move = true, combat = true },
         anim = { dict = 'anim@mp_player_intmenu@key_fob@', clip = 'fob_click' }
     }) then return end
-
-    -- [4] โหลดโมเดลและสร้างรถ (Client-side ชัวร์เรื่องสีสุด)
     local model = data.vehicle or data.model
     model = type(model) == 'string' and joaat(model) or model
     QBCore.Functions.LoadModel(model)
-
     local heading = data.rotation and data.rotation.z or 0.0
     local veh = CreateVehicle(model, spawnPos.x, spawnPos.y, spawnPos.z, heading, true, false)
-
-    -- [5] แก้ปัญหา Warning ID 0: รอจนกว่าระบบ Network จะยอมรับรถคันนี้
     local netId = 0
     local timeout = 0
     while netId == 0 and timeout < 100 do
@@ -276,8 +241,6 @@ function SpawnPlayerVehicle(data)
         Wait(10)
         timeout = timeout + 1
     end
-
-    -- [6] ตั้งค่าสถานะเริ่มต้น
     SetEntityAlpha(veh, 0, false)
     SetEntityCollision(veh, false, false)
     FreezeEntityPosition(veh, true)
@@ -285,30 +248,21 @@ function SpawnPlayerVehicle(data)
     if data.rotation then
         SetEntityRotation(veh, data.rotation.x or 0.0, data.rotation.y or 0.0, data.rotation.z or 0.0, 2, true)
     end
-
-    -- [7] ตั้งค่า Mods (ใส่ตรงนี้เพื่อให้สีและของแต่งตรงตาม Database 100%)
     local vehicleMods = type(data.mods) == 'string' and json.decode(data.mods) or data.mods
     if vehicleMods then
         QBCore.Functions.SetVehicleProperties(veh, vehicleMods)
     end
-
-    -- [8] แจ้ง Server ให้เปลี่ยน State (ส่ง netId ที่ไม่ใช่ 0 ไป)
     if netId ~= 0 then
         TriggerServerEvent('parking:server:UpdateVehicleData', netId, 0)
     end
-
-    -- [9] น้ำมัน, กุญแจ, และเอฟเฟกต์
     local fuelLevel = data.fuel or data.fuelLevel or 100.0
     exports['qb-fuel']:SetFuel(veh, fuelLevel)
     TriggerEvent('vehiclekeys:client:SetOwner', data.plate)
-
     SetVehicleDoorsLocked(veh, 2)
     PlayVehicleDoorCloseSound(veh, 1)
     SetVehicleLights(veh, 2)
     Wait(150)
     SetVehicleLights(veh, 0)
-
-    -- [10] Fade In
     local alpha = 0
     CreateThread(function()
         while alpha < 255 do
