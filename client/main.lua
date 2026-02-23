@@ -74,8 +74,8 @@ end
 -- ==========================================
 --              Parking Command
 -- ==========================================
+RegisterNetEvent('parking:client:parkVehicle', function()
 
-RegisterCommand('parking', function()
     local ped = PlayerPedId()
     local veh = GetVehiclePedIsIn(ped, false)
 
@@ -136,8 +136,7 @@ end, false)
 -- ==========================================
 --              Unparking Command
 -- ==========================================
-
-RegisterCommand('unparking', function()
+RegisterNetEvent('parking:client:unparkVehicle', function()
     local data = dataparking()
 
     if not data or not DoesEntityExist(data.entity) then
@@ -183,9 +182,8 @@ end, false)
 -- ==========================================
 --              My Vehicles Menu
 -- ==========================================
-
-RegisterCommand('myvehicles', function()
-    QBCore.Functions.TriggerCallback('parking:getVehicles', function(vehicles)
+RegisterNetEvent('parking:client:vehicleslist', function()
+    QBCore.Functions.TriggerCallback('parking:server:getVehicles', function(vehicles)
         if not vehicles or #vehicles == 0 then
             notify('ไม่พบข้อมูลรถของคุณ', 'error')
             return
@@ -393,14 +391,14 @@ local function OpenParkingMenu()
             title = '📍 จอดรถ',
             description = 'บันทึกตำแหน่งและล็อครถ',
             icon = 'square-parking',
-            onSelect = function() ExecuteCommand('parking') end
+            onSelect = function() TriggerEvent('parking:client:parkVehicle') end
         })
 
         table.insert(options, {
             title = '🔓 ปลดล็อกการจอด',
             description = 'ปลดล็อครถที่จอดไว้',
             icon = 'unlock',
-            onSelect = function() ExecuteCommand('unparking') end
+            onSelect = function() TriggerEvent('parking:client:unparkVehicle') end
         })
     end
 
@@ -408,7 +406,7 @@ local function OpenParkingMenu()
         title = '🚗 รถของฉัน',
         description = 'ดูรายการรถทั้งหมด',
         icon = 'car',
-        onSelect = function() ExecuteCommand('myvehicles') end
+        onSelect = function() TriggerEvent('parking:client:vehicleslist') end
     })
 
     lib.registerContext({ id = 'parking_main_menu', title = 'Parking System', options = options })
