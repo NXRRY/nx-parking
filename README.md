@@ -248,7 +248,7 @@ ADD COLUMN IF NOT EXISTS `parking` LONGTEXT DEFAULT NULL;
 
 ---
 
-## [v1.0.0] – Full System Rework
+## [v0.2.0] – Full System Rework
 - Complete architecture rebuild
 - F6 menu removal
 - F1 Radial integration
@@ -257,10 +257,6 @@ ADD COLUMN IF NOT EXISTS `parking` LONGTEXT DEFAULT NULL;
 - Fine viewing system
 - Backend security overhaul
 - Performance optimization
-
----
-
-## [v0.2.0]
 - Smart Radial Menu introduction
 - Vehicle diagnostic menu
 - Secure depot payment logic
