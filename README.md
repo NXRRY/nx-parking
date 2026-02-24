@@ -89,3 +89,25 @@ ADD COLUMN IF NOT EXISTS `parking` LONGTEXT DEFAULT NULL,
     * **System Integration:** Fully integrated with `qb-vehiclekeys` for automatic key assignment and `qb-fuel` for real-time fuel synchronization.
 
 ---
+
+
+## 🚀 Version 0.2.0 - The Diagnostic & Depot Update
+
+### 🌟 New Features
+
+* **Advanced Vehicle Diagnostic Menu:**
+    * Integrates with `ox_lib` for a premium-looking UI.
+    * Displays real-time **Engine Health**, **Body Health**, and **Fuel Levels** using progress bars.
+    * Dynamic color schemes (Green/Yellow/Red) based on vehicle condition.
+
+* **Depot & Fine System:**
+    * Retrieves `depotprice` directly from the database.
+    * Supports **Currency Formatting** (e.g., `$1,000,000`) for better readability.
+    * Mandatory payment system before unparking the vehicle.
+
+* **Security & Reliability:**
+    * **Double-Layer Verification:** Checks ownership and debt status on both Client and Server sides to prevent exploits.
+    * **Secure Payment Flow:** Automatically deducts funds from `cash` or `bank` (with smart split-payment logic).
+    * **Anti-Glitch Spawning:** Improved vehicle placement using `SetVehicleOnGroundProperly` to prevent cars from falling through the map.
+
+---
