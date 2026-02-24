@@ -97,7 +97,7 @@ local function SetupSubItems()
     SetupParkingMenu() -- << Add this line
 end
 
-
+```
 ### 1. SQL Setup
 Execute the following command in your database (Table: `player_vehicles`):
 
