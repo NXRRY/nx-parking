@@ -1,23 +1,12 @@
 local QBCore = exports['qb-core']:GetCoreObject()
 
+
+
 -- ==========================================
 --              Server Callbacks
 -- ==========================================
 
--- [ ตรวจสอบการเป็นเจ้าของรถ ]
-QBCore.Functions.CreateCallback('parking:server:checkOwnership', function(source, cb, plate)
-    MySQL.Async.fetchScalar('SELECT 1 FROM player_vehicles WHERE plate = @plate', {
-        ['@plate'] = plate
-    }, function(result)
-        if result then
-            cb(true) 
-        else
-            cb(false) 
-        end
-    end)
-end)
-
-QBCore.Functions.CreateCallback('parking:server:getVehicles', function(source, cb) -- เพิ่ม cb เข้ามา
+QBCore.Functions.CreateCallback('parking:server:getVehicleList', function(source, cb) -- เพิ่ม cb เข้ามา
     local Player = QBCore.Functions.GetPlayer(source)
     if not Player then return cb({}) end 
 
@@ -55,44 +44,22 @@ QBCore.Functions.CreateCallback('parking:server:getVehicles', function(source, c
     cb(vehicles) 
 end)
 
-QBCore.Functions.CreateCallback('parking:server:RequestSpawnVehicle', function(source, cb, data)
-    local src = source
-    local Player = QBCore.Functions.GetPlayer(src)
-    if not Player or not data then return cb(false) end
 
-    local plate = QBCore.Shared.Trim(data.plate)
-    local citizenid = Player.PlayerData.citizenid
+QBCore.Functions.CreateCallback('parking:server:checkOwnership', function(source, cb, plate)
+    MySQL.Async.fetchScalar('SELECT 1 FROM player_vehicles WHERE plate = @plate', {
+        ['@plate'] = plate
+    }, function(result)
+        if result then
+            cb(true) 
+        else
+            cb(false) 
+        end
+    end)
+end)
 
-    -- [SECURITY 1] เช็คความเป็นเจ้าของ
-    local isOwner = MySQL.scalar.await('SELECT 1 FROM player_vehicles WHERE plate = ? AND citizenid = ?', {
-        plate, citizenid
-    })
-
-    if not isOwner then
-        print(string.format("[BAN RISK] %s tried to spawn vehicle %s without ownership!", GetPlayerName(src), plate))
-        return cb(false)
-    end
-
-    -- [SECURITY 2] เช็คระยะห่าง
-    local pPed = GetPlayerPed(src)
-    local pCoords = GetEntityCoords(pPed)
-    local vCoords = vector3(data.coords.x, data.coords.y, data.coords.z)
-    
-    if #(pCoords - vCoords) > 25.0 then 
-        return cb(false)
-    end
-
-    -- [ACTION] สปาวน์รถ (Server-side)
-    QBCore.Functions.SpawnVehicle(src, data.vehicle or data.model, vCoords, false, function(veh)
-        local netId = NetworkGetNetworkIdFromEntity(veh)
-        
-        -- อัปเดตสถานะใน DB ทันที
-        MySQL.update('UPDATE player_vehicles SET state = 0 WHERE plate = ? AND citizenid = ?', {
-            plate, citizenid
-        })
-
-        -- ส่ง netId กลับไปให้ Client
-        cb(netId)
+QBCore.Functions.CreateCallback('parking:server:getDepotPrice', function(source, cb, plate)
+    MySQL.scalar('SELECT depotprice FROM player_vehicles WHERE plate = ?', {plate}, function(price)
+        cb(price or 0)
     end)
 end)
 
@@ -106,7 +73,9 @@ RegisterNetEvent('parking:server:UpdateVehicleData', function(netId, state)
 
     -- [Validation] ตรวจสอบว่า state ที่ส่งมาถูกต้อง (ป้องกันคนส่งเลขมั่ว)
     if state ~= 0 and state ~= 1 then 
-        print(string.format('[Security Warning] %s tried to send invalid state: %s', GetPlayerName(src), tostring(state)))
+        if Config.Debug then    
+            print(string.format('[Debug] Invalid state received from %s: %s', GetPlayerName(src), tostring(state)))
+        end
         return 
     end
 
@@ -118,16 +87,6 @@ RegisterNetEvent('parking:server:UpdateVehicleData', function(netId, state)
         -- [Security Check 1] ตรวจสอบระยะห่าง (ห้ามอยู่ไกลเกิน 10 เมตร)
         local dist = #(GetEntityCoords(GetPlayerPed(src)) - GetEntityCoords(vehicle))
         if dist > 10.0 then return end
-
-        -- [Security Check 2] ตรวจสอบความเป็นเจ้าของ
-        local isOwner = MySQL.scalar.await('SELECT 1 FROM player_vehicles WHERE plate = ? AND citizenid = ?', {
-            plate, citizenid
-        })
-
-        if not isOwner then
-            print(string.format('[Security Warning] %s tried to modify vehicle %s without ownership!', GetPlayerName(src), plate))
-            return 
-        end
 
         -- เตรียมข้อมูลสำหรับการบันทึก
         local engine = GetVehicleEngineHealth(vehicle)
@@ -167,4 +126,76 @@ RegisterNetEvent('parking:server:UpdateVehicleData', function(netId, state)
             end
         end)
     end
+end)
+
+RegisterNetEvent('parking:server:requestMyVehicles', function()
+    local src = source
+    local Player = QBCore.Functions.GetPlayer(src)
+    if not Player then return end
+    
+    local citizenid = Player.PlayerData.citizenid
+
+    -- ดึงข้อมูลรถ State 1
+    MySQL.query('SELECT * FROM player_vehicles WHERE citizenid = ? AND state = 1', {citizenid}, function(result)
+        if result and #result > 0 then
+            TriggerClientEvent('parking:client:spawnAllStoredVehicles', src, result)
+        end
+    end)
+end)
+
+-- Event จัดการจ่ายเงินและนำรถออก
+RegisterNetEvent('parking:server:payAndTakeOut', function(netId, plate)
+    local src = source
+    local Player = QBCore.Functions.GetPlayer(src)
+    if not Player then return end
+
+    -- [1] ดึงราคาจริงจาก SQL อีกครั้งเพื่อความปลอดภัย (Anti-Cheat)
+    MySQL.scalar('SELECT depotprice FROM player_vehicles WHERE plate = ? AND citizenid = ?', {
+        plate, 
+        Player.PlayerData.citizenid
+    }, function(price)
+        if price == nil then 
+            TriggerClientEvent('QBCore:Notify', src, "ไม่พบข้อมูลความเป็นเจ้าของรถคันนี้", "error")
+            return 
+        end
+
+        price = tonumber(price) or 0
+
+        -- กรณีไม่มีค่าธรรมเนียม (0 บาท) ให้ผ่านไปได้เลย
+        if price <= 0 then
+            MySQL.update('UPDATE player_vehicles SET depotprice = 0 WHERE plate = ?', {plate})
+            TriggerClientEvent("parking:client:takeOutVehicle", src, netId)
+            return
+        end
+
+        -- [2] ตรวจสอบจำนวนเงินที่มีอยู่จริง (Cash + Bank)
+        local cashMoney = Player.Functions.GetMoney('cash')
+        local bankMoney = Player.Functions.GetMoney('bank')
+        local totalMoney = cashMoney + bankMoney
+
+        -- [3] เช็คว่าเงินรวมพอจ่ายไหม
+        if totalMoney >= price then
+            -- พยายามหักเงินสดก่อน
+            if cashMoney >= price then
+                Player.Functions.RemoveMoney('cash', price, "unparking-fee")
+            -- ถ้าเงินสดไม่พอ ให้หักจากธนาคารทั้งหมด
+            elseif bankMoney >= price then
+                Player.Functions.RemoveMoney('bank', price, "unparking-fee")
+            -- ถ้าแยกกันไม่พอ แต่รวมกันพอ (กรณีพิเศษ) ให้หักเงินสดจนหมดแล้วไปหักส่วนต่างที่ธนาคาร
+            else
+                local remainder = price - cashMoney
+                Player.Functions.RemoveMoney('cash', cashMoney, "unparking-fee")
+                Player.Functions.RemoveMoney('bank', remainder, "unparking-fee")
+            end
+
+            -- [4] จ่ายเงินสำเร็จ -> อัปเดต DB และสั่ง Client นำรถออก
+            MySQL.update('UPDATE player_vehicles SET depotprice = 0 WHERE plate = ?', {plate})
+            TriggerClientEvent("parking:client:takeOutVehicle", src, netId)
+            TriggerClientEvent('QBCore:Notify', src, "ชำระค่าธรรมเนียม $"..price.." เรียบร้อยแล้ว", "success")
+        else
+            -- [5] เงินไม่พอ
+            local missingMoney = price - totalMoney
+            TriggerClientEvent('QBCore:Notify', src, "คุณมีเงินไม่เพียงพอ! (ขาดอีก $"..missingMoney..")", "error")
+        end
+    end)
 end)
