@@ -91,23 +91,69 @@ ADD COLUMN IF NOT EXISTS `parking` LONGTEXT DEFAULT NULL,
 ---
 
 
-## 🚀 Version 0.2.0 - The Diagnostic & Depot Update
+## 🚀 What's New in v0.2.0
 
-### 🌟 New Features
+### 1. 🎡 Smart Radial Menu (Contextual UI)
+The system now dynamically updates your Radial Menu options based on your current state:
+- **In-Vehicle:** Displays the **"Park Vehicle"** option to save your coordinates and store the car.
+- **On-Foot:** Displays the **"Parked List"** option to view all your stored vehicles with a built-in GPS waypoint system to locate them.
 
-* **Advanced Vehicle Diagnostic Menu:**
-    * Integrates with `ox_lib` for a premium-looking UI.
-    * Displays real-time **Engine Health**, **Body Health**, and **Fuel Levels** using progress bars.
-    * Dynamic color schemes (Green/Yellow/Red) based on vehicle condition.
+### 2. 📋 Vehicle Diagnostic & Status Menu
+Interact with parked vehicles via `qb-target` to open a premium status dashboard:
+- **ox_lib Integration:** Beautiful progress bars for **Engine**, **Body**, and **Fuel**.
+- **Visual Health Indicators:** Dynamic color coding (Green/Yellow/Red) based on the vehicle's condition.
+- **Ownership Verification:** Secure server-side check to determine if the player is the rightful owner.
+- **Formatted Currency:** Displays `depotprice` with comma separators (e.g., $1,500,000) for better readability.
 
-* **Depot & Fine System:**
-    * Retrieves `depotprice` directly from the database.
-    * Supports **Currency Formatting** (e.g., `$1,000,000`) for better readability.
-    * Mandatory payment system before unparking the vehicle.
-
-* **Security & Reliability:**
-    * **Double-Layer Verification:** Checks ownership and debt status on both Client and Server sides to prevent exploits.
-    * **Secure Payment Flow:** Automatically deducts funds from `cash` or `bank` (with smart split-payment logic).
-    * **Anti-Glitch Spawning:** Improved vehicle placement using `SetVehicleOnGroundProperly` to prevent cars from falling through the map.
+### 3. 💸 Secure Unparking & Depot System
+- **Mandatory Payment:** If a vehicle has an outstanding `depotprice` in the database, the player must pay before unparking.
+- **Smart Logic:** Automatically checks and deducts funds from `Cash` or `Bank`.
+- **Anti-Exploit:** All financial transactions and ownership checks are handled server-side to prevent client-side manipulation.
 
 ---
+
+## 🛠️ Installation Guide
+
+### 1. Radial Menu Setup
+Open your `qb-radialmenu` client-side script (usually `client/main.lua`) and locate the `SetupSubItems` function. Insert the following code:
+
+```lua
+-- Add this to your Local Functions section
+local function SetupParkingMenu()
+    local ped = PlayerPedId()
+    local Vehicle = GetVehiclePedIsIn(ped, false)
+    local vehicleMenu = nil 
+
+    if Vehicle ~= 0 then
+        -- Inside a vehicle
+        vehicleMenu = {
+            id = 'park_vehicle',
+            title = 'Park Vehicle',
+            icon = 'square-parking',
+            type = 'client',
+            event = 'parking:client:parkVehicle',
+            shouldClose = true
+        }
+    else
+        -- Outside a vehicle
+        vehicleMenu = {
+            id = 'parked_list',
+            title = 'Parked Vehicles',
+            icon = 'clipboard-list',
+            type = 'client',
+            event = 'parking:client:openParkingList',
+            shouldClose = true
+        }
+    end
+
+    if vehicleMenu then
+        exports['qb-radialmenu']:AddOption(vehicleMenu)
+    end
+end
+
+-- Call the function inside SetupSubItems
+local function SetupSubItems()
+    SetupJobMenu()
+    SetupVehicleMenu()
+    SetupParkingMenu() -- << Add this line
+end
