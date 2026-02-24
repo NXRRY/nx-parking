@@ -1,6 +1,6 @@
 # 🚗 NXRRY Parking System (QBCore)
 
-![Version](https://img.shields.io/badge/Version-1.0.0-blue.svg)
+![Version](https://img.shields.io/badge/Version-0.2.0-blue.svg)
 ![Framework](https://img.shields.io/badge/Framework-QBCore-orange.svg)
 ![Dependency](https://img.shields.io/badge/Dependency-ox__lib-red.svg)
 ![UI](https://img.shields.io/badge/Integration-qb--radialmenu-yellow.svg)
@@ -69,7 +69,7 @@ This system saves the complete vehicle state to the database, ensuring vehicles 
 
 ---
 
-# 🚀 Major Update – v1.0.0 Full System Rework
+# 🚀 Major Update – v0.2.0 Full System Rework
 
 > Complete Architecture Rewrite
 
@@ -281,7 +281,7 @@ ADD COLUMN IF NOT EXISTS `parking` LONGTEXT DEFAULT NULL;
 
 # 📌 Developer Notes
 
-Version 1.0.0 is a foundational rebuild designed for:
+Version 0.2.0 is a foundational rebuild designed for:
 
 - Long-term scalability
 - Advanced RP server environments
