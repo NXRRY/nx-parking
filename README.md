@@ -1,15 +1,18 @@
 # 🚗 NXRRY Parking System (QBCore)
 
-![Version](https://img.shields.io/badge/Version-0.1.0-blue.svg)
+![Version](https://img.shields.io/badge/Version-1.0.0-blue.svg)
 ![Framework](https://img.shields.io/badge/Framework-QBCore-orange.svg)
 ![Dependency](https://img.shields.io/badge/Dependency-ox__lib-red.svg)
+![UI](https://img.shields.io/badge/Integration-qb--radialmenu-yellow.svg)
+![Target](https://img.shields.io/badge/Interaction-qb--target-green.svg)
 
-A high-performance **Street Parking System** for FiveM designed for realism and efficiency. This system saves the complete vehicle state to the database, ensuring vehicles remain at their parked location even after players disconnect from the server.
+A high-performance **Street Parking System** for FiveM designed for realism, security, and long-term scalability.
+
+This system saves the complete vehicle state to the database, ensuring vehicles remain at their parked location even after players disconnect from the server.
 
 ---
 
 ## 📺 System Showcase
-
 
 <div align="center">
 
@@ -17,54 +20,184 @@ A high-performance **Street Parking System** for FiveM designed for realism and 
 
 🎬 Click the image above to watch the full Video Demonstration.
 
-
 </div>
 
 ---
 
-## 🌟 Features
+# 🌟 Core Features
 
-* **Real-time Saving:** Instantly saves Coordinates (Coords), Rotation, Fuel levels, and Engine/Body health to the database.
-* **Security System:** When parked, the system automatically locks doors, freezes position, and sets the vehicle to Invincible to prevent theft or destruction.
-* **Visual Progress:** Utilizes `ox_lib` to display Progress Circles for a sleek UI and enhanced Roleplay (RP) immersion.
-* **GPS Tracking:** Integrated waypoint system to guide players back to their parked vehicles if they are far away.
-* **Ownership Check:** Verifies vehicle ownership via the database before allowing parking to prevent the parking of NPC or unauthorized vehicles.
+### 🅿️ Advanced Vehicle Persistence
+- Real-time saving of:
+  - Coordinates (X, Y, Z)
+  - Full Rotation (X, Y, Z)
+  - Engine Health
+  - Body Health
+  - Fuel Level
+- Database-backed storage using `player_vehicles`
+
+### 🔐 Security System
+- Automatic door locking when parked
+- Vehicle freeze position
+- Invincibility state while parked
+- Server-side ownership verification
+- Distance validation to prevent remote exploits
+
+### 🎡 Smart Radial Integration (F1)
+- Fully integrated with `qb-radialmenu`
+- Context-based options:
+  - **Inside Vehicle → Park Vehicle**
+  - **On Foot → View Parked Vehicles**
+- Removed dependency on F6 command menus
+
+### 👁 qb-target Interaction
+- Remove vehicles from parking using Eye Target
+- Immersive world interaction
+- No command spam
+- Cleaner roleplay flow
+
+### 📋 Vehicle Status & Fine Viewer
+- Inspect parked vehicle condition
+- View engine/body/fuel status
+- Check outstanding fines
+- Preview ticket amounts
+
+(Enforcement expansion planned)
+
+### 📍 GPS Waypoint Support
+- Locate parked vehicles easily
+- Automatic waypoint creation
 
 ---
 
-## 🛠 Commands
+# 🚀 Major Update – v1.0.0 Full System Rework
+
+> Complete Architecture Rewrite
+
+This version introduces a full internal rebuild of the parking system.
+
+⚠️ If you prefer the legacy behavior, you may continue using **Version 0.1.2**.
+
+---
+
+## 🔄 Menu Migration (F6 ➜ F1)
+
+- Removed `/openparkingmenu`
+- Integrated directly into `qb-radialmenu`
+- Dynamic contextual interaction system
+- Improved RP immersion
+
+---
+
+## 🅿️ Rebuilt Parking Core
+
+### Improvements:
+- Better coordinate precision
+- Full rotation saving
+- Improved SQL handling
+- Cleaner metadata structure
+- Enhanced entity existence verification
+- Stronger anti-duplication logic
+- Stable network entity synchronization
+- Improved server callback validation
+
+---
+
+## 🚘 New Spawn Philosophy
+
+Players are no longer required to manually spawn vehicles after parking.
+
+The system now automatically handles:
+
+- Vehicle state management
+- Ownership verification
+- Entity recreation validation
+- Spawn integrity control
+
+This creates a smoother and more realistic street parking experience.
+
+---
+
+## 💸 Secure Unparking & Depot Logic
+
+- Mandatory payment if `depotprice` exists
+- Automatic deduction from Cash or Bank
+- Server-side financial validation
+- Anti-exploit transaction handling
+
+---
+
+## 🔐 Backend Security Improvements
+
+- Strict citizenid & plate validation
+- Dual-layer distance check
+- Entity network sync wait logic
+- Duplicate spawn prevention
+- Parking state locking improvements
+- Secure SQL execution structure
+
+---
+
+## 🧠 Future Expansion Ready
+
+The new architecture prepares the system for:
+
+- 🚔 Police Parking Fine Commands
+- 🚧 Impound System Integration
+- 🔄 Vehicle Recovery System (Coming Soon)
+- 📍 Zone-Based Parking Restrictions
+- 🔑 Persistent Lock State Saving
+- 💰 Advanced Fine & Billing Module
+
+---
+
+# ⚠️ Coming Soon – Vehicle Recovery System
+
+We are developing a fallback recovery system for rare cases where vehicles may disappear due to unexpected issues.
+
+Planned features:
+- Vehicle integrity validation
+- Automatic detection system
+- Admin recovery command
+- Safe respawn fallback logic
+
+---
+
+# 🛠 Commands
 
 | Command | Function |
-| :--- | :--- |
-| `/openparkingmenu` | Opens the main menu for vehicle management (Default: **F6**) |
+|----------|----------|
+| *(Removed)* `/openparkingmenu` | Migrated to F1 Radial Menu |
 
 ---
 
-## 📂 Resource Structure
+# 📂 Resource Structure
 
-* `config.lua`: Configuration for notifications (Notify) and Debug Mode.
-* `fxmanifest.lua`: Defines script loading and resource dependencies.
-* `client/main.lua`: Handles player-side logic, UI menus, and vehicle spawning.
-* `server/main.lua`: Manages database read/write operations and Server Callbacks.
+- `config.lua` – Notification & Debug Configuration
+- `fxmanifest.lua` – Resource Definition
+- `client/main.lua` – UI Logic, Interaction & Spawning
+- `server/main.lua` – Database Handling & Validation
 
 ---
 
+# 🛠 Installation Guide
 
+## 1️⃣ Radial Menu Setup
 
-## 🛠️ Installation Guide
-
-### 1. Radial Menu Setup
-Open your `qb-radialmenu` client-side script (usually `client/main.lua`) and locate the `SetupSubItems` function. Insert the following code:
+Open `qb-radialmenu/client/main.lua` and locate:
 
 ```lua
--- Add this to your Local Functions section
+SetupSubItems()
+```
+
+Add this function:
+
+```lua
 local function SetupParkingMenu()
     local ped = PlayerPedId()
     local Vehicle = GetVehiclePedIsIn(ped, false)
     local vehicleMenu = nil 
 
     if Vehicle ~= 0 then
-        -- Inside a vehicle
         vehicleMenu = {
             id = 'park_vehicle',
             title = 'Park Vehicle',
@@ -74,7 +207,6 @@ local function SetupParkingMenu()
             shouldClose = true
         }
     else
-        -- Outside a vehicle
         vehicleMenu = {
             id = 'parked_list',
             title = 'Parked Vehicles',
@@ -89,72 +221,83 @@ local function SetupParkingMenu()
         exports['qb-radialmenu']:AddOption(vehicleMenu)
     end
 end
-
--- Call the function inside SetupSubItems
-local function SetupSubItems()
-    SetupJobMenu()
-    SetupVehicleMenu()
-    SetupParkingMenu() -- << Add this line
-end
-
 ```
-### 1. SQL Setup
-Execute the following command in your database (Table: `player_vehicles`):
+
+Then call it inside `SetupSubItems()`:
+
+```lua
+SetupParkingMenu()
+```
+
+---
+
+## 2️⃣ SQL Setup
+
+Execute in your database:
 
 ```sql
 ALTER TABLE `player_vehicles` 
 ADD COLUMN IF NOT EXISTS `coords` TEXT DEFAULT NULL,
 ADD COLUMN IF NOT EXISTS `rotation` TEXT DEFAULT NULL,
-ADD COLUMN IF NOT EXISTS `parking` LONGTEXT DEFAULT NULL,
+ADD COLUMN IF NOT EXISTS `parking` LONGTEXT DEFAULT NULL;
 ```
-## 🚀 Update Logs & Patch Notes
-
-### [v0.1.0] - Initial Base System
-> *Core System: Basic parking functionality and data persistence*
-
-* **Vehicle Persistence:** Implemented a system to save vehicle data into the `player_vehicles` database upon parking.
-* **Metadata Tracking:** Added support for tracking `engine_health`, `body_health`, and `fuel_level` to ensure vehicle state is preserved.
-* **Spatial Data:** Implemented detailed coordinate logging including `x, y, z` positions and vehicle `rotation` (heading).
-* **State Management:** Introduced a `state` column to monitor whether a vehicle is currently stored (1) or unparked (0).
 
 ---
 
-### [v0.1.1] - Security & Stability Patch
-> *Security Hardening: Exploit prevention and Network ID stabilization*
-
-* **Enhanced Security:**
-    * **Server-Side Ownership Validation:** Added strict verification of `citizenid` and `plate` on the server-side to prevent unauthorized players from spawning or modifying vehicles they don't own.
-    * **Distance Verification:** Implemented a dual-layered **Distance Check** (20-25m radius) on both Client and Server to prevent remote-spawning exploits.
-* **Network ID Synchronization:**
-    * **ID 0 Warning Fix:** Resolved the `no object by ID 0` warning by implementing a synchronous loop that waits for the entity to be fully registered on the network before sending data to the server.
-* **Precision Spawning & Reliability:**
-    * **Client-Side Spawning:** Optimized the spawning logic to execute on the client-side, ensuring 100% accuracy for **Vehicle Mods**, **Liveries**, and **Colors**.
-    * **Entity Sync Logic:** Added a "Wait for Entity" mechanism to ensure the vehicle exists in the client's world before applying properties and modifications.
-* **Visual & Logic Polish:**
-    * **Smooth Fade-In:** Added a professional **Alpha Transition (0-255)** effect when unparking vehicles.
-    * **Duplicate Prevention:** Improved the **Plate Check** logic to scan the map for existing vehicles before spawning, preventing duplicate entities.
-    * **System Integration:** Fully integrated with `qb-vehiclekeys` for automatic key assignment and `qb-fuel` for real-time fuel synchronization.
+# 📜 Changelog History
 
 ---
 
-
-## 🚀 What's New in v0.2.0
-
-### 1. 🎡 Smart Radial Menu (Contextual UI)
-The system now dynamically updates your Radial Menu options based on your current state:
-- **In-Vehicle:** Displays the **"Park Vehicle"** option to save your coordinates and store the car.
-- **On-Foot:** Displays the **"Parked List"** option to view all your stored vehicles with a built-in GPS waypoint system to locate them.
-
-### 2. 📋 Vehicle Diagnostic & Status Menu
-Interact with parked vehicles via `qb-target` to open a premium status dashboard:
-- **ox_lib Integration:** Beautiful progress bars for **Engine**, **Body**, and **Fuel**.
-- **Visual Health Indicators:** Dynamic color coding (Green/Yellow/Red) based on the vehicle's condition.
-- **Ownership Verification:** Secure server-side check to determine if the player is the rightful owner.
-- **Formatted Currency:** Displays `depotprice` with comma separators (e.g., $1,500,000) for better readability.
-
-### 3. 💸 Secure Unparking & Depot System
-- **Mandatory Payment:** If a vehicle has an outstanding `depotprice` in the database, the player must pay before unparking.
-- **Smart Logic:** Automatically checks and deducts funds from `Cash` or `Bank`.
-- **Anti-Exploit:** All financial transactions and ownership checks are handled server-side to prevent client-side manipulation.
+## [v1.0.0] – Full System Rework
+- Complete architecture rebuild
+- F6 menu removal
+- F1 Radial integration
+- qb-target interaction
+- Improved spawn logic
+- Fine viewing system
+- Backend security overhaul
+- Performance optimization
 
 ---
+
+## [v0.2.0]
+- Smart Radial Menu introduction
+- Vehicle diagnostic menu
+- Secure depot payment logic
+
+---
+
+## [v0.1.1]
+- Security hardening
+- Network ID synchronization fix
+- Anti-duplication improvements
+- Alpha fade spawn transition
+
+---
+
+## [v0.1.0]
+- Initial release
+- Basic parking persistence system
+- Coordinate & rotation saving
+- Engine/Body/Fuel metadata tracking
+
+---
+
+# 📌 Developer Notes
+
+Version 1.0.0 is a foundational rebuild designed for:
+
+- Long-term scalability
+- Advanced RP server environments
+- Modular expansion
+- Enterprise-level server stability
+
+This is not just an update — it is a structural upgrade.
+
+---
+
+# ❤️ Built for QBCore Roleplay Servers
+
+Designed for realism.  
+Optimized for performance.  
+Engineered for expansion.
