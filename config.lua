@@ -1,10 +1,12 @@
 Config = {}
-Config.notifyType = 'ox' -- Options: 'qb', 'okok', 'chat', 'ox'
-Config.Debug = false
+Config.Debug = true -- เปิดโหมด Debug เพื่อดูข้อมูลเพิ่มเติมในคอนโซล (เช่น ชื่อโซนที่เข้าออก)
+Config.EnableParkCommand = true -- เปิดใช้งานคำสั่ง /park เพื่อจอดรถ
+Config.notifyType = 'ox' -- 'ox' / 'qb' / 'chat'
 
 Config.ParkingZones = {
     {
         name = "parking_square_1",
+        title = "Parking Square 1",
         points = {
             vector2(-1437.83, -2781.57),
             vector2(-1422.40, -2781.57),
@@ -21,6 +23,7 @@ Config.ParkingZones = {
     },
     {
         name = "parking_mall_2",
+        title = "Parking Mall 2",
         points = {
             vector2(-1415.66, -2781.17),
             vector2(-1400.23, -2781.17),
@@ -34,49 +37,59 @@ Config.ParkingZones = {
 }
 
 Config.Strings = {
-    -- Notifications
-    ['not_in_veh'] = 'You are not in a vehicle.',
-    ['not_driver'] = 'You must be the driver to perform this action!',
-    ['slow_down'] = 'Please slow down before parking!',
-    ['not_owner'] = 'This is not a personal vehicle. You cannot park here.',
-    ['park_success'] = 'Vehicle parked and doors locked successfully.',
-    ['park_cancel'] = 'Parking cancelled.',
-    ['unpark_not_found'] = 'No parked vehicle found in range.',
-    ['unpark_not_owner'] = 'You do not own this vehicle.',
-    ['unpark_success'] = 'Vehicle unlocked and ready for use.',
-    ['unpark_cancel'] = 'Unlocking cancelled.',
-    ['veh_not_found'] = 'No vehicle data found.',
-    ['veh_already_out'] = 'Vehicle [%s] is already out in the city. GPS marked.',
-    ['too_far'] = 'You are too far from the parking location.',
-    ['gps_set'] = 'You are too far away. A GPS waypoint has been set.',
-    ['spawn_cancel'] = 'Vehicle retrieval cancelled.',
-    ['spawn_success'] = 'Vehicle [%s] has arrived.',
-    ['not_parked_here'] = 'This vehicle is not parked here.',
-    ['no_parking_zone'] = 'You cannot park here! This area is a no-parking zone.',
-    ['no_parking_zone_all'] = '🚫 **NO PARKING ZONE** : All vehicles are strictly prohibited',
-    ['no_parking_zone_jobs'] = '⚠️ **RESTRICTED AREA** : Authorized for [ %s ] only',
+    -- ระบบเมนูหลัก (Vehicle List)
+    list_not_found_title = "ไม่พบข้อมูล",
+    list_not_found_desc = "คุณไม่มีรายการรถในระบบ",
+    list_menu_title = "รายการรถของฉัน",
+    list_item_desc = "ทะเบียน: %s | สถานะ: %s",
     
-    -- Progress Bar Labels
-    ['prog_parking'] = 'Saving parking location...',
-    ['prog_unparking'] = 'Unlocking vehicle...',
-    ['prog_spawning'] = 'Retrieving vehicle from system...',
+    -- สถานะรถในรายการ
+    status_list_out = "ไม่ได้ทำการจอด",
+    status_list_parked = "จอดเข้าระบบ",
+    status_list_impounded = "ถูกยึดโดยเจ้าหน้าที่",
 
-    -- Menu UI
-    ['menu_title'] = 'Parking System',
-    ['my_veh_title'] = 'My Vehicles',
-    ['current_veh_info'] = '🚘 Current Vehicle Info',
-    ['current_veh_desc'] = 'Model: %s\nPlate: %s\nFuel: %d%%\nEngine: %d%%',
-    ['btn_park'] = '📍 Park Vehicle',
-    ['btn_park_desc'] = 'Save location and lock vehicle',
-    ['btn_unpark'] = '🔓 Unlock Parking',
-    ['btn_unpark_desc'] = 'Unlock your parked vehicle',
-    ['btn_my_veh'] = '🚗 My Vehicles',
-    ['btn_my_veh_desc'] = 'View list of all your vehicles',
+    -- ระบบรายละเอียดรถ (Vehicle Detail - จากอันที่แล้ว)
+    vehicle_detail_title = "ข้อมูลรถ: %s",
+    location_title = "📍 ตำแหน่งล่าสุด",
+    location_desc = "ถนน: %s กดเพื่อนำทาง",
+    location_notify = "ตำแหน่งล่าสุดของรถถูกตั้งเป็น GPS แล้ว",
     
-    -- Blip & State
-    ['blip_name'] = 'Parked Vehicle [%s]',
-    ['state_parked'] = 'Parked',
-    ['state_impounded'] = 'Impounded',
-    ['state_unknown'] = 'Unknown',
-    ['veh_list_desc'] = 'Engine: %d%% | Status: %s'
+    status_title = "🚦 สถานะปัจจุบัน",
+    status_unknown = "ไม่ทราบสถานะ",
+    status_out = "ไม่ได้ทำการจอด",
+    status_parked = "จอดเข้าระบบ (Parking)",
+    status_impounded = "ถูกยึด (Impounded)",
+
+    engine_title = "📊 สภาพเครื่องยนต์",
+    engine_desc = "สุขภาพเครื่องยนต์: %d%%",
+
+    body_title = "🛡️ สภาพตัวถัง",
+    body_desc = "ความแข็งแรงตัวถัง: %d%%",
+
+    fuel_title = "⛽ ระดับน้ำมัน",
+    fuel_desc = "น้ำมันคงเหลือ: %d%%",
+    -- ระบบการนำรถออก (Take Out)
+    prog_take_out = "กำลังนำรถออกจากที่จอด...",
+    take_out_success = "นำรถออกจากระบบเรียบร้อยแล้ว",
+    take_out_cancel = "ยกเลิกการนำรถออก",
+    -- ระบบ Target (ที่ตัวรถ)
+    target_take_out = "นำรถออกจากที่จอด",
+    target_check = "ตรวจสอบสถานะรถ",
+    -- ระบบการจอดรถ (Parking)
+    prog_parking = "กำลังทำการจอดรถ...",
+    park_success = "จอดรถเรียบร้อยแล้ว",
+    park_cancel = "ยกเลิกการจอดรถ",
+    not_owner = "คุณไม่ใช่เจ้าของรถคันนี้",
+    -- หัวข้อแจ้งเตือน
+    menu_title = "ระบบจอดรถ",
+    -- สถานะการแจ้งเตือน (Chat Title)
+    notify_success = "สำเร็จ",
+    notify_error = "เกิดข้อผิดพลาด",
+    notify_warning = "คำเตือน",
+    notify_info = "ข้อมูล",
+    -- เงื่อนไขการจอดรถ (CanParkVehicle)
+    not_in_veh = "คุณต้องอยู่บนรถเพื่อดำเนินการ",
+    no_parking_zone = "บริเวณนี้ไม่อนุญาตให้จอดรถ",
+    not_driver = "คุณต้องเป็นคนขับเท่านั้น",
+    slow_down = "กรุณาจอดรถให้สนิทก่อน",
 }
