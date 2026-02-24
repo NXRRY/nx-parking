@@ -49,7 +49,54 @@ A high-performance **Street Parking System** for FiveM designed for realism and 
 
 ---
 
-## 💾 Installation
+
+
+## 🛠️ Installation Guide
+
+### 1. Radial Menu Setup
+Open your `qb-radialmenu` client-side script (usually `client/main.lua`) and locate the `SetupSubItems` function. Insert the following code:
+
+```lua
+-- Add this to your Local Functions section
+local function SetupParkingMenu()
+    local ped = PlayerPedId()
+    local Vehicle = GetVehiclePedIsIn(ped, false)
+    local vehicleMenu = nil 
+
+    if Vehicle ~= 0 then
+        -- Inside a vehicle
+        vehicleMenu = {
+            id = 'park_vehicle',
+            title = 'Park Vehicle',
+            icon = 'square-parking',
+            type = 'client',
+            event = 'parking:client:parkVehicle',
+            shouldClose = true
+        }
+    else
+        -- Outside a vehicle
+        vehicleMenu = {
+            id = 'parked_list',
+            title = 'Parked Vehicles',
+            icon = 'clipboard-list',
+            type = 'client',
+            event = 'parking:client:openParkingList',
+            shouldClose = true
+        }
+    end
+
+    if vehicleMenu then
+        exports['qb-radialmenu']:AddOption(vehicleMenu)
+    end
+end
+
+-- Call the function inside SetupSubItems
+local function SetupSubItems()
+    SetupJobMenu()
+    SetupVehicleMenu()
+    SetupParkingMenu() -- << Add this line
+end
+
 
 ### 1. SQL Setup
 Execute the following command in your database (Table: `player_vehicles`):
@@ -111,49 +158,3 @@ Interact with parked vehicles via `qb-target` to open a premium status dashboard
 - **Anti-Exploit:** All financial transactions and ownership checks are handled server-side to prevent client-side manipulation.
 
 ---
-
-## 🛠️ Installation Guide
-
-### 1. Radial Menu Setup
-Open your `qb-radialmenu` client-side script (usually `client/main.lua`) and locate the `SetupSubItems` function. Insert the following code:
-
-```lua
--- Add this to your Local Functions section
-local function SetupParkingMenu()
-    local ped = PlayerPedId()
-    local Vehicle = GetVehiclePedIsIn(ped, false)
-    local vehicleMenu = nil 
-
-    if Vehicle ~= 0 then
-        -- Inside a vehicle
-        vehicleMenu = {
-            id = 'park_vehicle',
-            title = 'Park Vehicle',
-            icon = 'square-parking',
-            type = 'client',
-            event = 'parking:client:parkVehicle',
-            shouldClose = true
-        }
-    else
-        -- Outside a vehicle
-        vehicleMenu = {
-            id = 'parked_list',
-            title = 'Parked Vehicles',
-            icon = 'clipboard-list',
-            type = 'client',
-            event = 'parking:client:openParkingList',
-            shouldClose = true
-        }
-    end
-
-    if vehicleMenu then
-        exports['qb-radialmenu']:AddOption(vehicleMenu)
-    end
-end
-
--- Call the function inside SetupSubItems
-local function SetupSubItems()
-    SetupJobMenu()
-    SetupVehicleMenu()
-    SetupParkingMenu() -- << Add this line
-end
