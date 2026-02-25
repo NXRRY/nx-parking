@@ -1,43 +1,50 @@
+-- parking/client.lua (Refactored)
+
 local QBCore = exports['qb-core']:GetCoreObject()
-local strings = Config.Strings 
+local strings = Config.Strings
+local depotPeds = {}  -- Store NPCs for cleanup
 
+-- ============================
+-- 1. NOTIFICATION HELPERS
+-- ============================
+local notifySettings = {
+    success = { icon = 'check-circle', color = '#48BB78', chatIcon = '✅', chatTitle = strings['notify_success'] },
+    error   = { icon = 'xmark-circle', color = '#F56565', chatIcon = '🚨', chatTitle = strings['notify_error'] },
+    warning = { icon = 'exclamation-triangle', color = '#ECC94B', chatIcon = '⚠️', chatTitle = strings['notify_warning'] },
+    inform  = { icon = 'info-circle', color = '#4299E1', chatIcon = '📩', chatTitle = strings['notify_info'] }
+}
 
-RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
-    Wait(2000)
-    TriggerServerEvent('parking:server:requestMyVehicles')
-end)
-
--- ฟังก์ชันแจ้งเตือน
--- ฟังก์ชันแจ้งเตือน
-local function notify(text, type, timeout)
-    local notifySettings = {
-        ['success'] = { icon = 'check-circle', color = '#48BB78', chatIcon = '✅', chatTitle = strings['notify_success'] },
-        ['error']   = { icon = 'xmark-circle', color = '#F56565', chatIcon = '🚨', chatTitle = strings['notify_error'] },
-        ['warning'] = { icon = 'exclamation-triangle', color = '#ECC94B', chatIcon = '⚠️', chatTitle = strings['notify_warning'] },
-        ['inform']  = { icon = 'info-circle', color = '#4299E1', chatIcon = '📩', chatTitle = strings['notify_info'] }
-    }
-    local settings = notifySettings[type] or notifySettings['inform']
+--- Unified notification function
+---@param text string
+---@param type string 'success'|'error'|'warning'|'inform'
+---@param timeout number? (default 5000)
+local function showNotification(text, type, timeout)
+    type = type or 'inform'
+    local settings = notifySettings[type] or notifySettings.inform
     local oxType = type == 'inform' and 'info' or type
+    timeout = timeout or 5000
 
     if Config.notifyType == 'ox' then
-        lib.notify({ 
-            title = strings['menu_title'] or 'SYSTEM', 
-            description = text, 
+        lib.notify({
+            title = strings.menu_title or 'SYSTEM',
+            description = text,
             type = oxType,
             icon = settings.icon,
             iconColor = settings.color,
             position = 'bottom-center',
-            duration = timeout or 5000,
-            showDuration = true, 
+            duration = timeout,
+            showDuration = true,
             iconAnimation = (type == 'error' or type == 'warning') and 'bounce' or nil
         })
-    elseif Config.notifyType == 'qb' then
-        TriggerEvent('QBCore:Notify', text, type, timeout or 5000)
     elseif Config.notifyType == 'chat' then
         local chatColor = {255, 255, 255}
-        if type == 'error' then chatColor = {255, 50, 50}
-        elseif type == 'success' then chatColor = {50, 255, 150}
-        elseif type == 'inform' then chatColor = {50, 200, 255} end
+        if type == 'error' then
+            chatColor = {255, 50, 50}
+        elseif type == 'success' then
+            chatColor = {50, 255, 150}
+        elseif type == 'inform' then
+            chatColor = {50, 200, 255}
+        end
         TriggerEvent('chat:addMessage', {
             color = chatColor,
             multiline = true,
@@ -46,122 +53,188 @@ local function notify(text, type, timeout)
                 string.format('^7%s', text)
             }
         })
-    else
-        TriggerEvent('QBCore:Notify', text, type, timeout or 5000)
+    else  -- default to QBCore.Notify
+        TriggerEvent('QBCore:Notify', text, type, timeout)
     end
 end
 
--- ตรวจสอบเงื่อนไขการจอด
-local function CanParkVehicleparking(ped, veh)
+-- ============================
+-- 2. VEHICLE HELPER FUNCTIONS
+-- ============================
+
+--- Check if player can park the vehicle
+---@param ped number
+---@param veh number
+---@return boolean
+local function canParkVehicle(ped, veh)
     if not veh or veh == 0 then
-        notify(strings['not_in_veh'], 'error')
+        showNotification(strings.not_in_veh, 'error')
         return false
     end
-    if insidenoParkingZone then
-        notify(strings['no_parking_zone'], 'error')
+    if insidenoParkingZone then   -- global variable set elsewhere
+        showNotification(strings.no_parking_zone, 'error')
         return false
     end
     if GetPedInVehicleSeat(veh, -1) ~= ped then
-        notify(strings['not_driver'], 'error')
+        showNotification(strings.not_driver, 'error')
         return false
     end
-    if GetEntitySpeed(veh) * 3.6 > 5 then
-        notify(strings['slow_down'], 'error')
+    if GetEntitySpeed(veh) * 3.6 > 5 then   -- speed > 5 km/h
+        showNotification(strings.slow_down, 'error')
         return false
     end
     return true
 end
 
--- Fade เอฟเฟกต์
-local function FadeOutEntity(entity, duration)
+--- Fade entity in/out
+---@param entity number
+---@param duration number ms
+---@param fadeIn boolean true = fade in, false = fade out
+local function fadeEntity(entity, duration, fadeIn)
     if not DoesEntityExist(entity) then return end
-    for alpha = 255, 0, -5 do
+    local start, stop, step = fadeIn and 0 or 255, fadeIn and 255 or 0, fadeIn and 5 or -5
+    SetEntityAlpha(entity, start, false)
+    for alpha = start, stop, step do
         SetEntityAlpha(entity, alpha, false)
-        Wait(duration / (255 / 5)) 
+        Wait(duration / 50)  -- 50 steps (255/5 ≈ 51)
     end
-    SetEntityAlpha(entity, 0, false)
+    if fadeIn then
+        ResetEntityAlpha(entity)
+    else
+        SetEntityAlpha(entity, 0, false)
+    end
 end
 
-local function FadeInEntity(entity, duration)
-    if not DoesEntityExist(entity) then return end
-    SetEntityAlpha(entity, 0, false)
-    for alpha = 0, 255, 5 do
-        SetEntityAlpha(entity, alpha, false)
-        Wait(duration / (255 / 5))
-    end
-    ResetEntityAlpha(entity)
-end
-
-local function GetStreetNameFromCoords(coords)
+--- Get street name from coordinates
+---@param coords vector3
+---@return string
+local function getStreetName(coords)
     local streetHash = GetStreetNameAtCoord(coords.x, coords.y, coords.z)
     return GetStreetNameFromHashKey(streetHash)
 end
 
-local function EnterVehicleNormally(ped, vehicle)
+--- Make ped enter vehicle normally
+---@param ped number
+---@param vehicle number
+local function enterVehicleNormally(ped, vehicle)
     ClearPedTasks(ped)
     TaskEnterVehicle(ped, vehicle, 10000, -1, 1.0, 1, 0)
 end
 
-local function format_thousand(v)
+--- Format number with thousand separators
+---@param v number
+---@return string
+local function formatThousand(v)
     local s = string.format("%d", math.floor(v))
     local pos = string.len(s) % 3
     if pos == 0 then pos = 3 end
     return string.sub(s, 1, pos) .. string.gsub(string.sub(s, pos + 1), "(...)", ",%1")
 end
 
--- Commands
+--- Find a vehicle on the map by plate
+---@param plate string
+---@return boolean, number|nil
+local function getVehicleByPlate(plate)
+    if not plate then return false, nil end
+    local allVehicles = GetGamePool('CVehicle')
+    local cleanPlate = plate:gsub("%s+", ""):upper()
+    for _, veh in ipairs(allVehicles) do
+        if DoesEntityExist(veh) then
+            local currentPlate = GetVehicleNumberPlateText(veh):gsub("%s+", ""):upper()
+            if currentPlate == cleanPlate then
+                return true, veh
+            end
+        end
+    end
+    return false, nil
+end
+
+--- Check if a spawn point is clear
+---@param coords table {x,y,z}
+---@param radius number
+---@return boolean
+local function isSpawnPointClear(coords, radius)
+    local ray = StartShapeTestCapsule(
+        coords.x, coords.y, coords.z,
+        coords.x, coords.y, coords.z + 0.5,
+        radius, 10, 0, 7
+    )
+    local _, hit = GetShapeTestResult(ray)
+    return hit == 0
+end
+
+-- ============================
+-- 3. INITIALIZATION
+-- ============================
+RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
+    Wait(2000)
+    TriggerServerEvent('parking:server:requestMyVehicles')
+end)
+
+-- Park command
 if Config.EnableParkCommand then
     RegisterCommand('park', function()
         TriggerEvent('parking:client:parkVehicle')
     end, false)
 end
 
--- Event: จอดรถ
+-- ============================
+-- 4. PARKING EVENTS
+-- ============================
+
+--- Park the current vehicle
 RegisterNetEvent('parking:client:parkVehicle', function()
     local ped = PlayerPedId()
     local veh = GetVehiclePedIsIn(ped, false)
-    if not veh or veh == 0 then return end 
-    if not CanParkVehicleparking(ped, veh) then return end
+    if not canParkVehicle(ped, veh) then return end
+
     QBCore.Functions.TriggerCallback('parking:server:checkOwnership', function(isOwner)
-        if isOwner then
-            if lib.progressCircle({
-                duration = 5000,
-                label = strings['prog_parking'],
-                position = 'bottom',
-                useWhileDead = false,
-                canCancel = true,
-                disable = { car = true, move = true, combat = true }
-            }) then
-                SetVehicleEngineOn(veh, false, false, true)
-                TaskLeaveVehicle(ped, veh, 1)
-                while IsPedInVehicle(ped, veh, true) do Wait(100) end
-                SetEntityAsMissionEntity(veh, true, true)
-                SetVehicleHasBeenOwnedByPlayer(veh, true)
-                if not NetworkGetEntityIsNetworked(veh) then
-                    NetworkRegisterEntityAsNetworked(veh)
-                end
-                local netId = NetworkGetNetworkIdFromEntity(veh)
-                SetVehicleDoorsLocked(veh, 2)
-                FreezeEntityPosition(veh, true)
-                SetTimeout(2000, function() 
-                    if DoesEntityExist(veh) then
-                        SetVehicleUndriveable(veh, true)
-                        SetEntityInvincible(veh, true)
-                        FadeOutEntity(veh, 1000)
-                        notify(strings['park_success'], 'success') 
-                        TriggerEvent('parking:client:createtarget', netId)
-                        TriggerServerEvent('parking:server:UpdateVehicleData', netId, 1)
-                    end
-                end)
-            else
-                notify(strings['park_cancel'], 'error') 
-            end
-        else
-            notify(strings['not_owner'], 'error')
+        if not isOwner then
+            showNotification(strings.not_owner, 'error')
+            return
         end
+
+        if not lib.progressCircle({
+            duration = 5000,
+            label = strings.prog_parking,
+            position = 'bottom',
+            useWhileDead = false,
+            canCancel = true,
+            disable = { car = true, move = true, combat = true }
+        }) then
+            showNotification(strings.park_cancel, 'error')
+            return
+        end
+
+        -- Park the vehicle
+        SetVehicleEngineOn(veh, false, false, true)
+        TaskLeaveVehicle(ped, veh, 1)
+        while IsPedInVehicle(ped, veh, true) do Wait(100) end
+
+        SetEntityAsMissionEntity(veh, true, true)
+        SetVehicleHasBeenOwnedByPlayer(veh, true)
+        if not NetworkGetEntityIsNetworked(veh) then
+            NetworkRegisterEntityAsNetworked(veh)
+        end
+        local netId = NetworkGetNetworkIdFromEntity(veh)
+
+        SetVehicleDoorsLocked(veh, 2)
+        FreezeEntityPosition(veh, true)
+
+        SetTimeout(2000, function()
+            if DoesEntityExist(veh) then
+                SetVehicleUndriveable(veh, true)
+                SetEntityInvincible(veh, true)
+                fadeEntity(veh, 1000, false)
+                showNotification(strings.park_success, 'success')
+                TriggerEvent('parking:client:createtarget', netId)
+                TriggerServerEvent('parking:server:UpdateVehicleData', netId, 1, GetVehicleFuelLevel(veh))
+            end
+        end)
     end, GetVehicleNumberPlateText(veh))
 end)
 
+--- Create target on parked vehicle
 RegisterNetEvent('parking:client:createtarget', function(netId)
     local timeout = 0
     while not NetworkDoesEntityExistWithNetworkId(netId) and timeout < 100 do
@@ -169,94 +242,86 @@ RegisterNetEvent('parking:client:createtarget', function(netId)
         timeout = timeout + 1
     end
     local veh = NetworkGetEntityFromNetworkId(netId)
-    if DoesEntityExist(veh) then
-        FadeInEntity(veh, 500)
-        exports['qb-target']:AddTargetEntity(veh, {
-            options = {
-                {
-                    type = "client",
-                    icon = "fas fa-key",
-                    label = strings['target_take_out'],
-                    action = function(entity)
-                        local nId = NetworkGetNetworkIdFromEntity(entity)
-                        TriggerEvent("parking:client:takeOutVehicle", nId)
-                    end
-                },
-                {
-                    type = "client",
-                    action = function(entity)
-                        TriggerEvent("parking:client:checkVehicleStatus", {entity = entity})
-                    end,
-                    icon = "fas fa-info-circle",
-                    label = strings['target_check'],
-                },
+    if not DoesEntityExist(veh) then return end
+
+    fadeEntity(veh, 500, true)
+    exports['qb-target']:AddTargetEntity(veh, {
+        options = {
+            {
+                type = "client",
+                icon = "fas fa-key",
+                label = strings.target_take_out,
+                action = function(entity)
+                    local nId = NetworkGetNetworkIdFromEntity(entity)
+                    TriggerEvent("parking:client:takeOutVehicle", nId)
+                end
             },
-            distance = 2.5,
-        })
-    end
+            {
+                type = "client",
+                action = function(entity)
+                    TriggerEvent("parking:client:checkVehicleStatus", { entity = entity })
+                end,
+                icon = "fas fa-info-circle",
+                label = strings.target_check,
+            }
+        },
+        distance = 2.5,
+    })
 end)
 
+--- Take out a parked vehicle
 RegisterNetEvent('parking:client:takeOutVehicle', function(netId)
     local veh = NetworkGetEntityFromNetworkId(netId)
     if not DoesEntityExist(veh) then return end
-    
+
     local plate = GetVehicleNumberPlateText(veh)
 
-    -- [เพิ่มการตรวจสอบ] เช็คค่า depot ใน SQL ก่อนเริ่มขบวนการ
     QBCore.Functions.TriggerCallback('parking:server:getDepotPrice', function(depotPrice)
         if depotPrice > 0 then
-            -- ถ้ายังมีค่าปรับค้างอยู่ ให้ดักไว้ไม่ให้เอาออก
-            notify(string.format("ต้องชำระค่าธรรมเนียม $%s ก่อนนำรถออก!", depotPrice), 'error')
-            return 
+            showNotification(string.format("ต้องชำระค่าธรรมเนียม $%s ก่อนนำรถออก!", depotPrice), 'error')
+            return
         end
 
-        -- ถ้าค่าเป็น 0 แล้ว (จ่ายแล้ว) ถึงจะเริ่ม Progress Bar
-        if lib.progressCircle({
+        if not lib.progressCircle({
             duration = 5000,
-            label = strings['prog_take_out'],
+            label = strings.prog_take_out,
             useWhileDead = false,
             canCancel = true,
             disable = { car = true, move = true, combat = true }
         }) then
-            if DoesEntityExist(veh) then
-                -- ปลดสถานะการจอดทั้งหมด
-                FadeInEntity(veh, 500)
-                SetVehicleDoorsLocked(veh, 1)
-                FreezeEntityPosition(veh, false)
-                SetVehicleUndriveable(veh, false)
-                SetEntityInvincible(veh, false)
-                SetVehicleEngineOn(veh, true, false, true)
-
-                SetEntityAsNoLongerNeeded(veh) 
-                SetVehicleHasBeenOwnedByPlayer(veh, true)
-
-                -- ลบ Target และอัปเดตสถานะใน DB เป็น 0 (พร้อมขับ)
-                exports['qb-target']:RemoveTargetEntity(veh)
-                notify(strings['take_out_success'], 'success') 
-                TriggerServerEvent('parking:server:UpdateVehicleData', netId, 0)
-
-                -- ให้ตัวละครขึ้นรถอัตโนมัติ (ถ้าต้องการ)
-                EnterVehicleNormally(PlayerPedId(), veh)
-            end
-        else
-            notify(strings['take_out_cancel'], 'error') 
+            showNotification(strings.take_out_cancel, 'error')
+            return
         end
+
+        -- Release vehicle
+        fadeEntity(veh, 500, true)
+        SetVehicleDoorsLocked(veh, 1)
+        FreezeEntityPosition(veh, false)
+        SetVehicleUndriveable(veh, false)
+        SetEntityInvincible(veh, false)
+        SetVehicleEngineOn(veh, true, false, true)
+
+        SetEntityAsNoLongerNeeded(veh)
+        SetVehicleHasBeenOwnedByPlayer(veh, true)
+
+        exports['qb-target']:RemoveTargetEntity(veh)
+        showNotification(strings.take_out_success, 'success')
+        TriggerServerEvent('parking:server:UpdateVehicleData', netId, 0, GetVehicleFuelLevel(veh))
+
+        enterVehicleNormally(PlayerPedId(), veh)
     end, plate)
 end)
 
+--- Show vehicle status menu
 RegisterNetEvent('parking:client:checkVehicleStatus', function(data)
     local vehicle = data.entity
     if not DoesEntityExist(vehicle) then return end
 
     local plate = GetVehicleNumberPlateText(vehicle)
-    local nId = NetworkGetNetworkIdFromEntity(vehicle)
+    local netId = NetworkGetNetworkIdFromEntity(vehicle)
 
-    -- [1] เช็คความเป็นเจ้าของ
     QBCore.Functions.TriggerCallback('parking:server:checkOwnership', function(isOwner)
-        
-        -- [2] เช็คค่าธรรมเนียม (Depot Price)
         QBCore.Functions.TriggerCallback('parking:server:getDepotPrice', function(depotPrice)
-            
             local engineHealth = math.floor(GetVehicleEngineHealth(vehicle) / 10)
             local bodyHealth = math.floor(GetVehicleBodyHealth(vehicle) / 10)
             local fuel = math.floor(exports['LegacyFuel']:GetFuel(vehicle))
@@ -280,19 +345,16 @@ RegisterNetEvent('parking:client:checkVehicleStatus', function(data)
                 }
             }
 
-            -- ถ้าเป็นเจ้าของ ให้แสดงตัวเลือกนำรถออกพร้อมราคา
             if isOwner then
-                local formattedPrice = format_thousand(depotPrice)
+                local formattedPrice = formatThousand(depotPrice)
                 local priceLabel = depotPrice > 0 and ("💰 ค่าธรรมเนียม: $" .. formattedPrice) or "🆓 ไม่มีค่าใช้จ่าย"
-                
                 table.insert(options, {
                     title = 'นำรถออกจากพื้นที่จอด',
                     description = priceLabel .. "\nยืนยันชำระเงินและยกเลิกการจอด",
                     icon = 'key',
                     iconColor = depotPrice > 0 and '#ff4d4d' or '#5fb6ff',
                     onSelect = function()
-                        -- ส่งไปให้ Server ตรวจสอบเงินและราคาจริงอีกครั้ง
-                        TriggerServerEvent("parking:server:payAndTakeOut", nId, plate)
+                        TriggerServerEvent("parking:server:payAndTakeOut", netId, plate)
                     end
                 })
             end
@@ -303,41 +365,35 @@ RegisterNetEvent('parking:client:checkVehicleStatus', function(data)
                 options = options
             })
             lib.showContext('parking_status_menu')
-
         end, plate)
     end, plate)
 end)
 
-
-
+--- Spawn all stored vehicles (called from server)
 RegisterNetEvent('parking:client:spawnAllStoredVehicles', function(vehicles)
-    for i = 1, #vehicles do
-        local data = vehicles[i]
+    for _, data in ipairs(vehicles) do
         local plate = data.plate
-        local existingVeh = nil
-        local allVehicles = QBCore.Functions.GetVehicles()
-        
-        for j = 1, #allVehicles do
-            if QBCore.Functions.GetPlate(allVehicles[j]) == plate then
-                existingVeh = allVehicles[j]
-                break
-            end
-        end
-
-        if not existingVeh then
+        local exists, _ = getVehicleByPlate(plate)
+        if exists then
+            -- Vehicle already exists, just add target
+            local veh = select(2, getVehicleByPlate(plate))
+            local netId = NetworkGetNetworkIdFromEntity(veh)
+            TriggerEvent('parking:client:createtarget', netId)
+        else
+            -- Spawn new vehicle
             local model = data.vehicle or data.model
             model = type(model) == 'string' and joaat(model) or model
             QBCore.Functions.LoadModel(model)
 
             local coords = type(data.coords) == 'string' and json.decode(data.coords) or data.coords
-            -- [TIP] บวกค่า Z ขึ้น 0.5 เพื่อให้รถมีพื้นที่ในการคำนวณการวางล้อลงพื้น
             local spawnPos = vector3(coords.x, coords.y, coords.z)
-            
+
             local rotation = type(data.rotation) == 'string' and json.decode(data.rotation) or data.rotation
-            local heading = rotation.z or 0.0
-            
+            local heading = rotation and rotation.z or 0.0
+
             local veh = CreateVehicle(model, spawnPos.x, spawnPos.y, spawnPos.z, heading, true, false)
-            
+
+            -- Wait for network ID
             local netId = 0
             local timeout = 0
             while netId == 0 and timeout < 100 do
@@ -346,13 +402,11 @@ RegisterNetEvent('parking:client:spawnAllStoredVehicles', function(vehicles)
                 timeout = timeout + 1
             end
 
-
             RequestCollisionAtCoord(spawnPos.x, spawnPos.y, spawnPos.z)
-            while not HasCollisionLoadedAroundEntity(veh) do 
-                Wait(1) 
-            end
+            while not HasCollisionLoadedAroundEntity(veh) do Wait(1) end
             SetVehicleOnGroundProperly(veh)
 
+            -- Hide initially
             SetEntityAlpha(veh, 0, false)
             SetEntityCollision(veh, false, false)
             FreezeEntityPosition(veh, true)
@@ -362,76 +416,67 @@ RegisterNetEvent('parking:client:spawnAllStoredVehicles', function(vehicles)
                 SetEntityRotation(veh, rotation.x or 0.0, rotation.y or 0.0, rotation.z or 0.0, 2, true)
             end
 
-            local vehicleMods = type(data.mods) == 'string' and json.decode(data.mods) or data.mods
-            if vehicleMods then
-                QBCore.Functions.SetVehicleProperties(veh, vehicleMods)
+            local mods = type(data.mods) == 'string' and json.decode(data.mods) or data.mods
+            if mods then
+                QBCore.Functions.SetVehicleProperties(veh, mods)
             end
 
-            local fuelLevel = data.fuel or data.fuelLevel or 100.0
-            exports['qb-fuel']:SetFuel(veh, fuelLevel)
+            local fuel = data.fuel or data.fuelLevel or 100.0
+            exports['qb-fuel']:SetFuel(veh, fuel)
 
             SetEntityAsMissionEntity(veh, true, true)
-            SetVehicleDoorsLocked(veh, 2)     
-            SetVehicleUndriveable(veh, true)   
-            SetEntityInvincible(veh, true)     
-            
+            SetVehicleDoorsLocked(veh, 2)
+            SetVehicleUndriveable(veh, true)
+            SetEntityInvincible(veh, true)
+
             SetVehicleLights(veh, 2)
             Wait(150)
             SetVehicleLights(veh, 0)
 
-            local alpha = 0
+            -- Fade in
             CreateThread(function()
-                while alpha < 255 do
-                    alpha = alpha + 15
-                    if alpha > 255 then alpha = 255 end
+                for alpha = 0, 255, 15 do
                     SetEntityAlpha(veh, alpha, false)
                     Wait(30)
                 end
                 ResetEntityAlpha(veh)
                 SetEntityCollision(veh, true, true)
-                FreezeEntityPosition(veh, true) 
+                FreezeEntityPosition(veh, true)
             end)
 
-            TriggerEvent('parking:client:createtarget', netId)
-        else
-            local netId = NetworkGetNetworkIdFromEntity(existingVeh)
             TriggerEvent('parking:client:createtarget', netId)
         end
     end
 end)
 
+--- Show vehicle list menu
 RegisterNetEvent('parking:client:checkVehicleList', function()
-
     QBCore.Functions.TriggerCallback('parking:server:getVehicleList', function(vehicles)
         if not vehicles or #vehicles == 0 then
-            lib.notify({ 
-                title = strings.list_not_found_title, 
-                description = strings.list_not_found_desc, 
-                type = 'error' 
+            lib.notify({
+                title = strings.list_not_found_title,
+                description = strings.list_not_found_desc,
+                type = 'error'
             })
             return
         end
 
         local options = {}
-
-        for _, v in pairs(vehicles) do
+        for _, v in ipairs(vehicles) do
             local statusText = ""
             local statusIcon = "car"
-            
-            -- ดึงสถานะจาก Config
-            if v.state == 0 then 
+            if v.state == 0 then
                 statusText = strings.status_list_out
                 statusIcon = "circle-xmark"
-            elseif v.state == 1 then 
+            elseif v.state == 1 then
                 statusText = strings.status_list_parked
                 statusIcon = "circle-check"
-            elseif v.state == 2 then 
+            elseif v.state == 2 then
                 statusText = strings.status_list_impounded
                 statusIcon = "handcuffs"
             end
 
             local vehicleName = QBCore.Shared.Vehicles[v.vehicle] and QBCore.Shared.Vehicles[v.vehicle].name or v.vehicle
-
             table.insert(options, {
                 title = vehicleName,
                 description = strings.list_item_desc:format(v.plate, statusText),
@@ -448,24 +493,112 @@ RegisterNetEvent('parking:client:checkVehicleList', function()
             title = strings.list_menu_title,
             options = options
         })
-
         lib.showContext('vehicle_list_menu')
     end)
 end)
 
+--- Show detailed vehicle info
 RegisterNetEvent('parking:client:showVehicleDetail', function(v)
-    local streetName = GetStreetNameFromCoords(v.coords)
+    local rawCoords = type(v.coords) == 'string' and json.decode(v.coords) or v.coords
+    local vCoords = vector3(rawCoords.x or 0.0, rawCoords.y or 0.0, rawCoords.z or 0.0)
+
+    local streetName = getStreetName(vCoords)
+    local playerCoords = GetEntityCoords(PlayerPedId())
+    local distance = #(playerCoords - vCoords)
+
+    local rotation = type(v.rotation) == 'string' and json.decode(v.rotation) or v.rotation
+    local heading = (rotation and rotation.z) or 0.0
+
     local statusText = strings.status_unknown
     local color = "white"
-    if v.state == 0 then 
-        statusText = strings.status_out 
+    if v.state == 0 then
+        statusText = strings.status_out
         color = "#ff4d4d"
-    elseif v.state == 1 then 
-        statusText = strings.status_parked 
+    elseif v.state == 1 then
+        statusText = strings.status_parked
         color = "#2ecc71"
-    elseif v.state == 2 then 
-        statusText = strings.status_impounded 
-        color = "#f1c40f" 
+    elseif v.state == 2 then
+        statusText = strings.status_impounded
+        color = "#f1c40f"
+    end
+
+    local actionItem = {}
+    local found, vehEntity = getVehicleByPlate(v.plate)
+
+    if v.state == 1 then
+        -- Parked
+        if distance > 20.0 then
+            actionItem = {
+                title = "📌 ตั้งค่า GPS ไปยังจุดจอด",
+                description = ("ห่างจากคุณ %.2f เมตร"):format(distance),
+                icon = 'location-arrow',
+                iconColor = '#3498db',
+                onSelect = function()
+                    SetNewWaypoint(vCoords.x, vCoords.y)
+                    showNotification("มาร์คตำแหน่งจุดจอดแล้ว", 'inform')
+                end
+            }
+        else
+            actionItem = {
+                title = "🔑 นำรถออกจากพื้นที่จอด",
+                description = "คุณอยู่ใกล้รถแล้ว สามารถนำออกได้",
+                icon = 'key',
+                iconColor = '#2ecc71',
+                onSelect = function()
+                    if found then
+                        local nId = NetworkGetNetworkIdFromEntity(vehEntity)
+                        TriggerEvent('parking:client:takeOutVehicle', nId)
+                    else
+                        if lib.progressCircle({
+                            duration = 5000,
+                            label = "กำลังเรียกข้อมูลรถจากคลัง...",
+                            position = 'bottom',
+                            useWhileDead = false,
+                            canCancel = true,
+                            disable = { car = true, move = true, combat = true }
+                        }) then
+                            TriggerServerEvent('parking:server:respawnParkedVehicle', v.plate, vCoords, heading)
+                        else
+                            showNotification("ยกเลิกการเรียกข้อมูลรถ", 'error')
+                        end
+                    end
+                end
+            }
+        end
+    elseif v.state == 0 then
+        -- Out
+        if found then
+            local currentCoords = GetEntityCoords(vehEntity)
+            actionItem = {
+                title = "📡 ติดตามตำแหน่งรถปัจจุบัน",
+                description = "ตรวจพบสัญญาณรถในพื้นที่ มาร์คพิกัดบนแผนที่",
+                icon = 'radar',
+                iconColor = '#e67e22',
+                onSelect = function()
+                    SetNewWaypoint(currentCoords.x, currentCoords.y)
+                    showNotification("มาร์คตำแหน่งปัจจุบันของรถแล้ว", 'success')
+                end
+            }
+        else
+            actionItem = {
+                title = "📂 ติดต่อเจ้าหน้าที่ Depot",
+                description = "ไม่พบสัญญาณรถในพื้นที่ กรุณาตรวจสอบที่จุดเก็บรถ",
+                icon = 'warehouse',
+                iconColor = '#95a5a6',
+                onSelect = function()
+                    showNotification("ไม่พบรถในพื้นที่ กรุณาติดต่อเบิกที่ Depot", 'error')
+                end
+            }
+        end
+    else
+        -- Impounded or other
+        actionItem = {
+            title = "🚫 ไม่สามารถเข้าถึงได้",
+            description = "รถคันนี้ถูกระงับการเข้าถึงชั่วคราว",
+            icon = 'ban',
+            iconColor = '#c0392b',
+            disabled = true
+        }
     end
 
     lib.registerContext({
@@ -473,13 +606,14 @@ RegisterNetEvent('parking:client:showVehicleDetail', function(v)
         title = strings.vehicle_detail_title:format(v.plate),
         menu = 'vehicle_list_menu',
         options = {
+            actionItem,
             {
                 title = strings.location_title,
                 description = strings.location_desc:format(streetName),
                 icon = 'location-dot',
                 onSelect = function()
-                    SetNewWaypoint(v.coords.x, v.coords.y)
-                    notify(strings.location_notify, 'inform')
+                    SetNewWaypoint(vCoords.x, vCoords.y)
+                    showNotification(strings.location_notify, 'inform')
                 end
             },
             {
@@ -490,31 +624,184 @@ RegisterNetEvent('parking:client:showVehicleDetail', function(v)
                 readonly = true
             },
             {
-                title = strings.engine_title,
-                description = strings.engine_desc:format(math.ceil(v.engine/10)),
-                icon = 'microchip',
-                progress = math.ceil(v.engine/10),
+                title = "ระดับความสมบูรณ์เครื่องยนต์",
+                progress = math.ceil(v.engine / 10),
                 colorScheme = (v.engine > 700 and 'green' or v.engine > 300 and 'orange' or 'red'),
-                readonly = true
+                icon = 'microchip'
             },
             {
-                title = strings.body_title,
-                description = strings.body_desc:format(math.ceil(v.body/10)),
-                icon = 'car-side',
-                progress = math.ceil(v.body/10),
-                colorScheme = (v.body > 700 and 'blue' or v.body > 300 and 'orange' or 'red'),
-                readonly = true
-            },
-            {
-                title = strings.fuel_title,
-                description = strings.fuel_desc:format(math.ceil(v.fuel)),
-                icon = 'gas-pump',
+                title = "ระดับน้ำมัน",
                 progress = math.ceil(v.fuel),
                 colorScheme = (v.fuel > 50 and 'yellow' or 'red'),
-                readonly = true
-            },
+                icon = 'gas-pump'
+            }
         }
     })
-
     lib.showContext('vehicle_detail_menu')
+end)
+
+--- Setup respawned vehicle after depot retrieval
+RegisterNetEvent('parking:client:setupRespawnedVehicle', function(netId, mods)
+    local timeout = 0
+    while not NetworkDoesEntityExistWithNetworkId(netId) and timeout < 1000 do
+        Wait(10)
+        timeout = timeout + 10
+    end
+    local veh = NetworkGetEntityFromNetworkId(netId)
+    if not DoesEntityExist(veh) then return end
+
+    if mods.heading then
+        SetEntityHeading(veh, mods.heading)
+    end
+    QBCore.Functions.SetVehicleProperties(veh, mods)
+
+    SetEntityVisible(veh, true, false)
+    SetEntityAlpha(veh, 255, false)
+    NetworkFadeInEntity(veh, 1)
+
+    FreezeEntityPosition(veh, false)
+    SetVehicleUndriveable(veh, false)
+    SetEntityInvincible(veh, false)
+
+    TriggerEvent("vehiclekeys:client:SetOwner", GetVehicleNumberPlateText(veh))
+    showNotification("กู้คืนพิกัดรถสำเร็จ!", "success")
+end)
+
+-- ============================
+-- 5. DEPOT SYSTEM (NPC & MENU)
+-- ============================
+
+CreateThread(function()
+    local npcModel = `s_m_y_cop_01`
+    RequestModel(npcModel)
+    while not HasModelLoaded(npcModel) do Wait(10) end
+
+    for _, depot in ipairs(Config.Depot) do
+        -- Blip
+        local blip = AddBlipForCoord(depot.coords.x, depot.coords.y, depot.coords.z)
+        SetBlipSprite(blip, depot.blip.sprite)
+        SetBlipDisplay(blip, 4)
+        SetBlipScale(blip, depot.blip.scale)
+        SetBlipColour(blip, depot.blip.color)
+        SetBlipAsShortRange(blip, true)
+        BeginTextCommandSetBlipName("STRING")
+        AddTextComponentString(depot.blip.name)
+        EndTextCommandSetBlipName(blip)
+
+        -- NPC
+        local ped = CreatePed(0, npcModel, depot.coords.x, depot.coords.y, depot.coords.z - 1.0, depot.coords.w, false, false)
+        FreezeEntityPosition(ped, true)
+        SetEntityInvincible(ped, true)
+        SetBlockingOfNonTemporaryEvents(ped, true)
+        TaskStartScenarioInPlace(ped, "WORLD_HUMAN_CLIPBOARD", 0, true)
+        table.insert(depotPeds, ped)
+
+        -- Target
+        exports['qb-target']:AddTargetEntity(ped, {
+            options = {
+                {
+                    type = "client",
+                    event = "parking:client:openDepotMenu",
+                    icon = "fas fa-clipboard-list",
+                    label = "เปิดดูรายการรถค้างจ่าย (" .. depot.name .. ")",
+                    depotIndex = depot.index  -- assuming you have index in config
+                }
+            },
+            distance = 2.0
+        })
+    end
+    SetModelAsNoLongerNeeded(npcModel)
+end)
+
+RegisterNetEvent('parking:client:openDepotMenu', function(data)
+    local index = data.depotIndex or 1
+    local currentDepot = Config.Depot[index]
+    if not currentDepot then return end
+
+    QBCore.Functions.TriggerCallback('parking:server:getVehicleList', function(vehicles)
+        local options = {}
+        for _, v in ipairs(vehicles) do
+            if v.state == 0 then
+                local price = v.depotprice or 0
+                table.insert(options, {
+                    title = GetDisplayNameFromVehicleModel(v.vehicle) .. " [" .. v.plate .. "]",
+                    description = "ค่าธรรมเนียมเบิกคืน: $" .. price,
+                    icon = 'car',
+                    onSelect = function()
+                        TriggerServerEvent('parking:server:takeOutVehicleDepot', v.plate, index)
+                    end
+                })
+            end
+        end
+
+        if #options == 0 then
+            showNotification("ไม่มีรถของคุณค้างอยู่ในคลังนี้", 'error')
+            return
+        end
+
+        lib.registerContext({
+            id = 'depot_list_menu',
+            title = currentDepot.name,
+            options = options
+        })
+        lib.showContext('depot_list_menu')
+    end)
+end)
+
+--- Spawn vehicle from depot (server-triggered)
+RegisterNetEvent('parking:client:spawnVehicleFromDepot', function(plate, mods, index)
+    -- Check if vehicle already exists on map
+    local exists, _ = getVehicleByPlate(plate)
+    if exists then
+        showNotification("รถทะเบียน " .. plate .. " อยู่บนโลกนี้แล้ว!", 'error')
+        return
+    end
+
+    local depot = Config.Depot[index]
+    local vehicleData = type(mods) == "string" and json.decode(mods) or mods
+    local model = vehicleData.model or vehicleData.vehicle
+
+    -- Find a free spawn point
+    local spawnCoords = nil
+    for _, coords in ipairs(depot.spawnPoint) do
+        if isSpawnPointClear(coords, 2.5) then
+            spawnCoords = coords
+            break
+        end
+    end
+
+    if not spawnCoords then
+        showNotification("พื้นที่ไม่ว่าง มีรถขวางอยู่!", 'error')
+        return
+    end
+
+    QBCore.Functions.SpawnVehicle(model, function(veh)
+        QBCore.Functions.SetVehicleProperties(veh, vehicleData)
+        SetVehicleNumberPlateText(veh, plate)
+
+        local fuel = vehicleData.fuelLevel or 100.0
+        if exports['LegacyFuel'] then
+            exports['LegacyFuel']:SetFuel(veh, fuel)
+        else
+            SetVehicleFuelLevel(veh, fuel)
+        end
+
+        if vehicleData.bodyHealth then SetVehicleBodyHealth(veh, vehicleData.bodyHealth) end
+        if vehicleData.engineHealth then SetVehicleEngineHealth(veh, vehicleData.engineHealth) end
+
+        TriggerEvent("vehiclekeys:client:SetOwner", plate)
+
+        SetEntityHeading(veh, spawnCoords.w)
+        SetVehicleOnGroundProperly(veh)
+
+        showNotification(string.format("นำรถทะเบียน %s ออกมาแล้ว (น้ำมัน: %d%%)", plate, math.floor(fuel)), 'success')
+    end, spawnCoords, true)
+end)
+
+-- Cleanup NPCs on resource stop
+AddEventHandler('onResourceStop', function(resource)
+    if GetCurrentResourceName() ~= resource then return end
+    for _, ped in ipairs(depotPeds) do
+        if DoesEntityExist(ped) then DeleteEntity(ped) end
+    end
 end)

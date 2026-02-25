@@ -1,33 +1,118 @@
-insidenoParkingZone = false 
+-- parking_zones/client.lua (Refactored)
+
 local QBCore = exports['qb-core']:GetCoreObject()
 local PlayerJob = nil
 local CreatedZones = {}
 
--- ฟังก์ชันดึงข้อมูลอาชีพให้ปลอดภัยขึ้น
-local function UpdateJob()
+-- Global flag used by the main parking script
+insidenoParkingZone = false
+
+-- ============================
+-- 1. JOB TRACKING
+-- ============================
+local function updateJob()
     local PlayerData = QBCore.Functions.GetPlayerData()
-    if PlayerData and PlayerData.job then
-        PlayerJob = PlayerData.job.name
-    else
-        -- ถ้ายังไม่มีข้อมูล ให้รอจังหวะถัดไป (เช่น OnPlayerLoaded)
-        PlayerJob = nil
-    end
+    PlayerJob = PlayerData and PlayerData.job and PlayerData.job.name or nil
 end
 
+-- Ensure job is set when resource starts or player loads
 AddEventHandler('onResourceStart', function(resourceName)
-    if GetCurrentResourceName() == resourceName then
-        UpdateJob()
+    if resourceName == GetCurrentResourceName() then
+        updateJob()
     end
 end)
 
-RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
-    UpdateJob()
-end)
-
+RegisterNetEvent('QBCore:Client:OnPlayerLoaded', updateJob)
 RegisterNetEvent('QBCore:Client:OnJobUpdate', function(JobInfo)
     PlayerJob = JobInfo.name
 end)
 
+-- ============================
+-- 2. ZONE HANDLING HELPERS
+-- ============================
+
+--- Build a comma‑separated list of allowed job names (capitalized)
+---@param allowJobs table
+---@return string
+local function formatAllowedJobList(allowJobs)
+    if not allowJobs then return "" end
+    local jobs = {}
+    for jobName, _ in pairs(allowJobs) do
+        -- Capitalize first letter
+        jobs[#jobs + 1] = jobName:gsub("^%l", string.upper)
+    end
+    return table.concat(jobs, ", ")
+end
+
+--- Check if the current player's job is allowed in the zone
+---@param allowJobs table
+---@return boolean
+local function isJobAllowed(allowJobs)
+    if not allowJobs or not PlayerJob then return false end
+    return allowJobs[PlayerJob] ~= nil
+end
+
+--- Generate the text UI message based on zone and permission
+---@param zoneData table
+---@param isAllowed boolean
+---@param allowedList string
+---@return string
+local function buildZoneMessage(zoneData, isAllowed, allowedList)
+    local title = zoneData.title or zoneData.name or "Parking Zone"
+    local statusMsg = isAllowed
+        and "✅ คุณได้รับอนุญาตให้จอดในพื้นที่นี้"
+        or string.format("❌ **เขตห้ามจอด:** เฉพาะ (%s)", allowedList ~= "" and allowedList or "ห้ามจอดทุกอาชีพ")
+    return string.format("# %s\n---\n%s", title, statusMsg)
+end
+
+--- Get the status color and icon based on permission
+---@param isAllowed boolean
+---@return string color, string icon
+local function getStatusStyle(isAllowed)
+    if isAllowed then
+        return "#2ecc71", "square-check"
+    else
+        return "#ff4d4d", "circle-exclamation"
+    end
+end
+
+--- Show or hide the zone UI
+---@param zoneData table
+---@param isInside boolean
+local function handleZoneUI(zoneData, isInside)
+    if isInside then
+        updateJob()  -- Refresh job in case it changed while outside
+
+        local isAllowed = isJobAllowed(zoneData.allowJobs)
+        insidenoParkingZone = not isAllowed
+
+        local allowedList = formatAllowedJobList(zoneData.allowJobs)
+        local msg = buildZoneMessage(zoneData, isAllowed, allowedList)
+        local statusColor, statusIcon = getStatusStyle(isAllowed)
+
+        lib.showTextUI(msg, {
+            position = "bottom-center",
+            icon = statusIcon,
+            iconColor = statusColor,
+            style = {
+                borderRadius = '12px',
+                backgroundColor = 'rgba(10, 10, 10, 0.9)',
+                color = '#ffffff',
+                borderBottom = '4px solid ' .. statusColor,
+                padding = '15px 25px',
+                minWidth = '320px',
+                boxShadow = '0 4px 15px rgba(0, 0, 0, 0.6)'
+            }
+        })
+    else
+        insidenoParkingZone = false
+        lib.hideTextUI()
+    end
+end
+
+-- ============================
+-- 3. CREATE ZONES FROM CONFIG
+-- ============================
 CreateThread(function()
     for _, zoneData in ipairs(Config.ParkingZones) do
         local zone = PolyZone:Create(zoneData.points, {
@@ -40,60 +125,7 @@ CreateThread(function()
         CreatedZones[zoneData.name] = zone
 
         zone:onPlayerInOut(function(isPointInside)
-            if isPointInside then
-                UpdateJob() -- รีเช็คอาชีพทุกครั้งที่เข้าโซน
-
-                local isAllowed = false
-                local allowedList = ""
-                
-                -- 1. ตรวจสอบสิทธิ์และดึงรายชื่ออาชีพที่อนุญาต
-                if zoneData.allowJobs then
-                    for jobName, _ in pairs(zoneData.allowJobs) do
-                        local formattedJob = jobName:gsub("^%l", string.upper)
-                        allowedList = (allowedList == "") and formattedJob or (allowedList .. ", " .. formattedJob)
-                        
-                        if PlayerJob == jobName then
-                            isAllowed = true
-                        end
-                    end
-                end
-                
-                insidenoParkingZone = not isAllowed
-
-                -- 2. ตั้งค่าการแสดงผล
-                local statusColor = isAllowed and "#2ecc71" or "#ff4d4d"
-                local statusIcon = isAllowed and "square-check" or "circle-exclamation"
-                local displayTitle = zoneData.title or zoneData.name or "Parking Zone"
-                
-                -- ใช้ Markdown ในการจัดรูปแบบ: # คือหัวข้อใหญ่, --- คือเส้นคั่น
-                local uiMsg = string.format([[
-# %s
----
-%s]], 
-                displayTitle,
-                isAllowed and "✅ คุณได้รับอนุญาตให้จอดในพื้นที่นี้" or "❌ **เขตห้ามจอด:** เฉพาะ (" .. (allowedList ~= "" and allowedList or "ห้ามจอดทุกอาชีพ") .. ")"
-                )
-
-                -- 3. เรียกใช้ Text UI (ปรับ Style สำหรับ bottom-center โดยเฉพาะ)
-                lib.showTextUI(uiMsg, {
-                    position = "bottom-center",
-                    icon = statusIcon,
-                    iconColor = statusColor,
-                    style = {
-                        borderRadius = '12px',
-                        backgroundColor = 'rgba(10, 10, 10, 0.9)',
-                        color = '#ffffff',
-                        borderBottom = '4px solid ' .. statusColor, -- เส้นสีเน้นสถานะที่ขอบล่าง
-                        padding = '15px 25px',
-                        minWidth = '320px',
-                        boxShadow = '0 4px 15px rgba(0, 0, 0, 0.6)'
-                    }
-                })
-            else
-                -- รีเซ็ตค่าเมื่อออกจากโซน
-                insidenoParkingZone = false
-                lib.hideTextUI()
-            end
+            handleZoneUI(zoneData, isPointInside)
         end)
     end
 end)
