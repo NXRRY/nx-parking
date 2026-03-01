@@ -108,7 +108,7 @@ RegisterNetEvent('parking:server:UpdateVehicleData', function(netId, state, fuel
     local engine = GetVehicleEngineHealth(vehicle)
     local body = GetVehicleBodyHealth(vehicle)
     local coords = GetEntityCoords(vehicle)
-    local heading = GetEntityHeading(vehicle)
+    local rotation = GetEntityRotation(vehicle)
     fuel = fuel or 100.0
 
     -- Retrieve existing mods, then update with new data
@@ -122,16 +122,15 @@ RegisterNetEvent('parking:server:UpdateVehicleData', function(netId, state, fuel
         mods.fuelLevel = fuel
         mods.engineHealth = engine
         mods.bodyHealth = body
-        mods.heading = heading
-
+        mods.rotation = rotation
         local parkingData = {
             coords = coords,
-            heading = heading,
+            rotation = rotation,
             plate = plate,
-            lastUpdate = os.time()
+            lastUpdate = os.time(),
         }
 
-        MySQL.update('UPDATE player_vehicles SET mods = ?, parking = ?, fuel = ?, engine = ?, body = ?, state = ?, coords = ? WHERE plate = ? AND citizenid = ?', {
+        MySQL.update('UPDATE player_vehicles SET mods = ?, parking = ?, fuel = ?, engine = ?, body = ?, state = ?, coords = ? , rotation = ? WHERE plate = ? AND citizenid = ?', {
             json.encode(mods),
             json.encode(parkingData),
             fuel,
@@ -139,12 +138,13 @@ RegisterNetEvent('parking:server:UpdateVehicleData', function(netId, state, fuel
             body,
             state,
             json.encode(coords),
+            json.encode(rotation),
             plate,
             citizenid
         }, function(rowsChanged)
             if rowsChanged and rowsChanged > 0 then
                 local status = (state == 1) and 'PARKED' or 'UNPARKED'
-                debugLog(status, '| Plate:', plate, '| Coords:', coords.x, coords.y, coords.z, '| Heading:', heading)
+                debugLog(status, '| Plate:', plate, '| Coords:', coords.x, coords.y, coords.z, '| rotation:', rotation.x, rotation.y, rotation.z, '| Fuel:', fuel, '| Engine:', engine, '| Body:', body)
             end
         end)
     end)
@@ -208,6 +208,7 @@ RegisterNetEvent('parking:server:requestMyVehicles', function()
         end
     end)
 end)
+
 
 --- Handle payment and then take out a vehicle (used from status menu)
 RegisterNetEvent('parking:server:payAndTakeOut', function(netId, plate)
@@ -288,4 +289,13 @@ RegisterNetEvent('parking:server:takeOutVehicleDepot', function(plate, index)
             TriggerClientEvent('QBCore:Notify', src, 'คุณมีเงินไม่พอจ่าย (ต้องการ $' .. price .. ')', 'error')
         end
     end)
+end)
+
+
+RegisterNetEvent('baseevents:enteredVehicle', function()
+    TriggerClientEvent('parking:client:radialmenusetup',source,'park')
+end)
+
+RegisterNetEvent('baseevents:leftVehicle', function()
+    TriggerClientEvent('parking:client:radialmenusetup',source,'list')
 end)

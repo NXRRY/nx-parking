@@ -3,6 +3,7 @@
 local QBCore = exports['qb-core']:GetCoreObject()
 local strings = Config.Strings
 local depotPeds = {}  -- Store NPCs for cleanup
+local vehicleCache = {} -- [plate] = entity
 
 -- ============================
 -- 1. NOTIFICATION HELPERS
@@ -131,21 +132,61 @@ local function formatThousand(v)
     return string.sub(s, 1, pos) .. string.gsub(string.sub(s, pos + 1), "(...)", ",%1")
 end
 
+local function normalizePlate(plate)
+    return plate and plate:gsub("%s+", ""):upper() or nil
+end
+
+local function addVehicleToCache(plate, entity)
+    local clean = normalizePlate(plate)
+    if clean and DoesEntityExist(entity) then
+        vehicleCache[clean] = entity
+    end
+end
+
+local function removeVehicleFromCache(plate)
+    local clean = normalizePlate(plate)
+    if clean then
+        vehicleCache[clean] = nil
+    end
+end
+
+local function getVehicleFromCache(plate)
+    local clean = normalizePlate(plate)
+    if not clean then return false, nil end
+
+    local entity = vehicleCache[clean]
+    if entity and DoesEntityExist(entity) then
+        return true, entity
+    end
+
+    -- cleanup ghost reference
+    vehicleCache[clean] = nil
+    return false, nil
+end
+
 --- Find a vehicle on the map by plate
 ---@param plate string
 ---@return boolean, number|nil
 local function getVehicleByPlate(plate)
-    if not plate then return false, nil end
-    local allVehicles = GetGamePool('CVehicle')
-    local cleanPlate = plate:gsub("%s+", ""):upper()
-    for _, veh in ipairs(allVehicles) do
+    local found, entity = getVehicleFromCache(plate)
+    if found then
+        return true, entity
+    end
+
+    -- fallback scan once
+    local cleanPlate = normalizePlate(plate)
+    if not cleanPlate then return false, nil end
+
+    for _, veh in ipairs(GetGamePool('CVehicle')) do
         if DoesEntityExist(veh) then
-            local currentPlate = GetVehicleNumberPlateText(veh):gsub("%s+", ""):upper()
+            local currentPlate = normalizePlate(GetVehicleNumberPlateText(veh))
             if currentPlate == cleanPlate then
+                addVehicleToCache(cleanPlate, veh)
                 return true, veh
             end
         end
     end
+
     return false, nil
 end
 
@@ -373,10 +414,8 @@ end)
 RegisterNetEvent('parking:client:spawnAllStoredVehicles', function(vehicles)
     for _, data in ipairs(vehicles) do
         local plate = data.plate
-        local exists, _ = getVehicleByPlate(plate)
+        local exists, veh = getVehicleByPlate(plate)
         if exists then
-            -- Vehicle already exists, just add target
-            local veh = select(2, getVehicleByPlate(plate))
             local netId = NetworkGetNetworkIdFromEntity(veh)
             TriggerEvent('parking:client:createtarget', netId)
         else
@@ -389,7 +428,7 @@ RegisterNetEvent('parking:client:spawnAllStoredVehicles', function(vehicles)
             local spawnPos = vector3(coords.x, coords.y, coords.z)
 
             local rotation = type(data.rotation) == 'string' and json.decode(data.rotation) or data.rotation
-            local heading = rotation and rotation.z or 0.0
+            local heading = rotation.z
 
             local veh = CreateVehicle(model, spawnPos.x, spawnPos.y, spawnPos.z, heading, true, false)
 
@@ -400,6 +439,14 @@ RegisterNetEvent('parking:client:spawnAllStoredVehicles', function(vehicles)
                 netId = NetworkGetNetworkIdFromEntity(veh)
                 Wait(10)
                 timeout = timeout + 1
+            end
+
+            SetEntityHeading(veh, heading) 
+            SetVehicleOnGroundProperly(veh)
+            FreezeEntityPosition(veh, true)
+
+            if rotation then
+                SetEntityRotation(veh, rotation.x or 0.0, rotation.y or 0.0, rotation.z or 0.0, 2, true)
             end
 
             RequestCollisionAtCoord(spawnPos.x, spawnPos.y, spawnPos.z)
@@ -434,16 +481,9 @@ RegisterNetEvent('parking:client:spawnAllStoredVehicles', function(vehicles)
             SetVehicleLights(veh, 0)
 
             -- Fade in
-            CreateThread(function()
-                for alpha = 0, 255, 15 do
-                    SetEntityAlpha(veh, alpha, false)
-                    Wait(30)
-                end
-                ResetEntityAlpha(veh)
-                SetEntityCollision(veh, true, true)
-                FreezeEntityPosition(veh, true)
-            end)
+            fadeEntity(veh, 1000, true)
 
+            addVehicleToCache(plate, veh)
             TriggerEvent('parking:client:createtarget', netId)
         end
     end
@@ -621,7 +661,7 @@ RegisterNetEvent('parking:client:showVehicleDetail', function(v)
                 description = statusText,
                 icon = 'info-circle',
                 iconColor = color,
-                readonly = true
+                readOnly = true
             },
             {
                 title = "ระดับความสมบูรณ์เครื่องยนต์",
@@ -666,6 +706,7 @@ RegisterNetEvent('parking:client:setupRespawnedVehicle', function(netId, mods)
     TriggerEvent("vehiclekeys:client:SetOwner", GetVehicleNumberPlateText(veh))
     showNotification("กู้คืนพิกัดรถสำเร็จ!", "success")
 end)
+
 
 -- ============================
 -- 5. DEPOT SYSTEM (NPC & MENU)
@@ -794,6 +835,8 @@ RegisterNetEvent('parking:client:spawnVehicleFromDepot', function(plate, mods, i
         SetEntityHeading(veh, spawnCoords.w)
         SetVehicleOnGroundProperly(veh)
 
+        addVehicleToCache(plate, veh)
+
         showNotification(string.format("นำรถทะเบียน %s ออกมาแล้ว (น้ำมัน: %d%%)", plate, math.floor(fuel)), 'success')
     end, spawnCoords, true)
 end)
@@ -805,3 +848,50 @@ AddEventHandler('onResourceStop', function(resource)
         if DoesEntityExist(ped) then DeleteEntity(ped) end
     end
 end)
+
+
+------------------------------
+local currentOption = nil
+
+RegisterNetEvent('parking:client:radialmenusetup', function(type)
+    updateRadialMenu(type)
+end)
+
+-- ฟังก์ชันสำหรับล้างเมนูเดิมและเพิ่มใหม่
+function updateRadialMenu(type)
+    if currentOption then
+        exports['qb-radialmenu']:RemoveOption(currentOption)
+        currentOption = nil
+    end
+
+    if type == "park" then
+        currentOption = exports['qb-radialmenu']:AddOption({
+            id = 'park_system',
+            title = 'จอดรถ (Parking)',
+            icon = 'square-parking',
+            type = 'client',
+            event = 'parking:client:parkVehicle',
+            shouldClose = true
+        })
+    elseif type == "list" then
+        currentOption = exports['qb-radialmenu']:AddOption({
+            id = 'park_system_list', 
+            title = 'รายการรถที่จอดไว้',
+            icon = 'clipboard-list',
+            type = 'client',
+            event = 'parking:client:checkVehicleList',
+            shouldClose = true
+        })
+    end
+end
+
+-- รันเช็คสถานะครั้งแรกตอนโหลด Script
+CreateThread(function()
+    local ped = PlayerPedId()
+    if IsPedInAnyVehicle(ped, false) then
+        updateRadialMenu("park")
+    else
+        updateRadialMenu("list")
+    end
+end)
+

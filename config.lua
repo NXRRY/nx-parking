@@ -1,17 +1,9 @@
--- parking/config.lua
--- Configuration for the parking system
-
 Config = {}
-
--- Enable debug mode to see extra console logs (e.g., zone enter/exit)
 Config.Debug = true
-
 -- Enable /park command
 Config.EnableParkCommand = true
-
 -- Notification system: 'ox', 'qb', or 'chat'
 Config.notifyType = 'ox'
-
 -- Depot locations where players can retrieve impounded vehicles
 Config.Depot = {
     {
@@ -40,6 +32,7 @@ Config.Depot = {
     }
 }
 
+
 -- Parking zones with job restrictions
 Config.ParkingZones = {
     {
@@ -53,7 +46,7 @@ Config.ParkingZones = {
         },
         minZ = 20.0,
         maxZ = 40.0,
-        debug = true,
+        debug = false,
         allowJobs = {
             ['ambulance'] = true,
             ['police'] = true
@@ -70,7 +63,7 @@ Config.ParkingZones = {
         },
         minZ = 10.0,
         maxZ = 30.0,
-        debug = true,
+        debug = false,
         -- No allowJobs means everyone can park
     },
 }
