@@ -259,8 +259,21 @@ Confirmation will immediately move the vehicle to the Police Station or Public D
     police_impound_view_title     = "Impound Records for: %s",
 
     -- เพิ่มต่อท้ายใน Config.Strings
-    zone_allowed_msg    = "✅ You are authorized to park in this area.",
-    zone_restricted_msg = "❌ **No Parking:** Allowed for (%s) only",
-    zone_no_jobs_msg    = "No parking for any profession",
-    zone_default_title  = "Parking Zone",
+    zone_allowed_msg              = "✅ You are authorized to park in this area.",
+    zone_restricted_msg           = "❌ **No Parking:** Allowed for (%s) only",
+    zone_no_jobs_msg              = "No parking for any profession",
+    zone_default_title            = "Parking Zone",
+
+        -- Server-side notifications
+    vehicle_not_found_data        = "Vehicle data not found.",
+    payment_success               = "Fee of $%s has been paid successfully.",
+    insufficient_funds            = "You do not have enough funds to retrieve the vehicle!",
+    retrieve_free_success         = "Vehicle retrieved successfully (No fee applied).",
+    insufficient_funds_required   = "Insufficient funds (Requires $%s).",
+    impound_success               = "Vehicle plate %s has been impounded (State 2).",
+    depot_success                 = "Vehicle plate %s has been sent to the depot (State 0).",
+    vehicle_entity_not_found      = "Vehicle entity not found (Possible sync issue).",
+    release_success_officer       = "Vehicle plate %s has been successfully released.",
+    vehicle_not_found             = "This vehicle could not be found in the database.",
+    vehicle_released_notify       = "Your vehicle has been released. The keys are with you.",
 }
