@@ -1,249 +1,204 @@
-# 🚗 NXRRY Parking System (QBCore)
-
-![Version](https://img.shields.io/badge/Version-0.2.0-blue.svg)
-![Framework](https://img.shields.io/badge/Framework-QBCore-orange.svg)
-![Dependency](https://img.shields.io/badge/Dependency-ox__lib-red.svg)
-![UI](https://img.shields.io/badge/Integration-qb--radialmenu-yellow.svg)
-![Target](https://img.shields.io/badge/Interaction-qb--target-green.svg)
-
-A high-performance **Street Parking System** for FiveM designed for realism, security, and long-term scalability.
-
-This system saves the complete vehicle state to the database, ensuring vehicles remain at their parked location even after players disconnect from the server.
+# nx-parking  
+**ระบบจอดรถอัจฉริยะสำหรับ FiveM (QBCore)**  
+*พัฒนาโดย NXRRY*
 
 ---
 
-## 📺 System Showcase
+## 📌 คำอธิบาย  
+nx-parking คือระบบจอดรถที่ช่วยให้ผู้เล่นสามารถ **จอดรถไว้ที่ไหนก็ได้** (ไม่จำเป็นต้องถึงโรงรถ) และระบบจะบันทึกสภาพรถ (น้ำมัน เครื่องยนต์ ตัวถัง) รวมถึงตำแหน่งล่าสุดไว้ในฐานข้อมูล รถที่จอดไว้จะถูกซ่อนไว้และสามารถนำออกมาใช้ใหม่ได้ทุกเมื่อผ่านเมนู หรือผ่านตู้/NPC ที่กำหนด  
 
-<div align="center">
-
-[![NXRRY Parking System](images/showcase.jpg)](https://streamable.com/cx1j9w)
-
-🎬 Click the image above to watch the full Video Demonstration.
-
-</div>
+ระบบยังรองรับ **การจำกัดพื้นที่จอดตามอาชีพ** (โซนจอด) และ **การอายัดรถโดยตำรวจ** พร้อมค่าปรับและระยะเวลาอายัด ผู้เล่นสามารถไถ่ถอนรถได้ที่ Depots หรือติดต่อเจ้าหน้าที่
 
 ---
 
-# 🌟 Core Features
-
-### 🅿️ Advanced Vehicle Persistence
-- Real-time saving of:
-  - Coordinates (X, Y, Z)
-  - Full Rotation (X, Y, Z)
-  - Engine Health
-  - Body Health
-  - Fuel Level
-- Database-backed storage using `player_vehicles`
-
-### 🔐 Security System
-- Automatic door locking when parked
-- Vehicle freeze position
-- Invincibility state while parked
-- Server-side ownership verification
-- Distance validation to prevent remote exploits
-
-### 🎡 Smart Radial Integration (F1)
-- Fully integrated with `qb-radialmenu`
-- Context-based options:
-  - **Inside Vehicle → Park Vehicle**
-  - **On Foot → View Parked Vehicles**
-- Removed dependency on F6 command menus
-
-### 👁 qb-target Interaction
-- Remove vehicles from parking using Eye Target
-- Immersive world interaction
-- No command spam
-- Cleaner roleplay flow
-
-### 📋 Vehicle Status & Fine Viewer
-- Inspect parked vehicle condition
-- View engine/body/fuel status
-- Check outstanding fines
-- Preview ticket amounts
-
-(Enforcement expansion planned)
-
-### 📍 GPS Waypoint Support
-- Locate parked vehicles easily
-- Automatic waypoint creation
+## ✨ คุณสมบัติหลัก  
+- ✅ จอดรถได้ทุกที่ (นอกเหนือโซนหวงห้าม)  
+- ✅ บันทึกสภาพรถ (น้ำมัน, เครื่องยนต์, ตัวถัง, ตำแหน่ง)  
+- ✅ ระบบโซนจอด (Parking Zones) จำกัดตามอาชีพ  
+- ✅ เมนูตรวจสอบสถานะรถ (ระยะทาง, สภาพ, ตำแหน่ง)  
+- ✅ ระบบอายัดรถโดยตำรวจ (Impound) พร้อมเหตุผล ค่าปรับ และเวลาอายัด  
+- ✅ ส่งรถไปยัง Depot สาธารณะ  
+- ✅ รับรถคืนจาก Depot / Impound ผ่าน NPC  
+- ✅ ตั้งค่า GPS ไปยังตำแหน่งรถที่จอดไว้  
+- ✅ รองรับ Radial Menu (qb-radialmenu)  
+- ✅ รองรับ Target (qb-target)  
+- ✅ รองรับการแจ้งเตือนหลายรูปแบบ (ox, qb, chat)  
+- ✅ ระบบตรวจสอบเวอร์ชันอัตโนมัติ  
 
 ---
 
-# 🚀 Major Update – v0.2.0 Full System Rework
-
-> Complete Architecture Rewrite
-
-This version introduces a full internal rebuild of the parking system.
-
-⚠️ If you prefer the legacy behavior, you may continue using **Version 0.1.2**.
-
----
-
-## 🔄 Menu Migration (F6 ➜ F1)
-
-- Removed `/openparkingmenu`
-- Integrated directly into `qb-radialmenu`
-- Dynamic contextual interaction system
-- Improved RP immersion
+## 🔧 ความต้องการ (Dependencies)  
+- [QBCore](https://github.com/qbcore-framework)  
+- [ox_lib](https://github.com/overextended/ox_lib)  
+- [PolyZone](https://github.com/mkafrin/PolyZone)  
+- [qb-target](https://github.com/qbcore-framework/qb-target)  
+- [LegacyFuel](https://github.com/InZidiuZ/LegacyFuel) (หรือระบบน้ำมันอื่นที่ compatible)  
+- [qb-radialmenu](https://github.com/qbcore-framework/qb-radialmenu) (ไม่บังคับ แต่แนะนำ)  
 
 ---
 
-## 🅿️ Rebuilt Parking Core
+## 📥 การติดตั้ง  
 
-### Improvements:
-- Better coordinate precision
-- Full rotation saving
-- Improved SQL handling
-- Cleaner metadata structure
-- Enhanced entity existence verification
-- Stronger anti-duplication logic
-- Stable network entity synchronization
-- Improved server callback validation
+### 1. ดาวน์โหลดและวางไฟล์  
+- ดาวน์โหลดสคริปต์จาก GitHub  
+- วางโฟลเดอร์ `nx-parking` ใน `resources` ของเซิร์ฟเวอร์  
 
----
-
-## 🚘 New Spawn Philosophy
-
-Players are no longer required to manually spawn vehicles after parking.
-
-The system now automatically handles:
-
-- Vehicle state management
-- Ownership verification
-- Entity recreation validation
-- Spawn integrity control
-
-This creates a smoother and more realistic street parking experience.
-
----
-
-## 💸 Secure Unparking & Depot Logic
-
-- Mandatory payment if `depotprice` exists
-- Automatic deduction from Cash or Bank
-- Server-side financial validation
-- Anti-exploit transaction handling
-
----
-
-## 🔐 Backend Security Improvements
-
-- Strict citizenid & plate validation
-- Dual-layer distance check
-- Entity network sync wait logic
-- Duplicate spawn prevention
-- Parking state locking improvements
-- Secure SQL execution structure
-
----
-
-## 🧠 Future Expansion Ready
-
-The new architecture prepares the system for:
-
-- 🚔 Police Parking Fine Commands
-- 🚧 Impound System Integration
-- 🔄 Vehicle Recovery System (Coming Soon)
-- 📍 Zone-Based Parking Restrictions
-- 🔑 Persistent Lock State Saving
-- 💰 Advanced Fine & Billing Module
-
----
-
-# ⚠️ Coming Soon – Vehicle Recovery System
-
-We are developing a fallback recovery system for rare cases where vehicles may disappear due to unexpected issues.
-
-Planned features:
-- Vehicle integrity validation
-- Automatic detection system
-- Admin recovery command
-- Safe respawn fallback logic
-
----
-
-# 🛠 Commands
-
-| Command | Function |
-|----------|----------|
-| *(Removed)* `/openparkingmenu` | Migrated to F1 Radial Menu |
-
----
-
-# 📂 Resource Structure
-
-- `config.lua` – Notification & Debug Configuration
-- `fxmanifest.lua` – Resource Definition
-- `client/main.lua` – UI Logic, Interaction & Spawning
-- `server/main.lua` – Database Handling & Validation
-
----
-
-# 🛠 Installation Guide
-
-## 2️⃣ SQL Setup
-
-Execute in your database:
+### 2. เตรียมฐานข้อมูล  
+รันคำสั่ง SQL ต่อไปนี้ในฐานข้อมูลเซิร์ฟเวอร์ของคุณ  
+(ตรวจสอบว่าตาราง `player_vehicles` มีอยู่แล้ว ถ้ายังไม่มีให้สร้างตาม QBcore)
 
 ```sql
+-- เพิ่มคอลัมน์ที่จำเป็นในตาราง player_vehicles (ถ้ายังไม่มี)
 ALTER TABLE `player_vehicles` 
-ADD COLUMN IF NOT EXISTS `coords` TEXT DEFAULT NULL,
-ADD COLUMN IF NOT EXISTS `rotation` TEXT DEFAULT NULL,
-ADD COLUMN IF NOT EXISTS `parking` LONGTEXT DEFAULT NULL;
+ADD COLUMN `state` INT DEFAULT 0, -- 0 = ใช้งาน, 1 = จอด, 2 = อายัด
+ADD COLUMN `depotprice` INT DEFAULT 0,
+ADD COLUMN `parking` LONGTEXT DEFAULT NULL,
+ADD COLUMN `coords` LONGTEXT DEFAULT NULL,
+ADD COLUMN `rotation` LONGTEXT DEFAULT NULL,
+ADD COLUMN `fuel` FLOAT DEFAULT 100,
+ADD COLUMN `engine` FLOAT DEFAULT 1000,
+ADD COLUMN `body` FLOAT DEFAULT 1000;
+
+-- สร้างตาราง impound_data สำหรับเก็บประวัติการอายัด
+CREATE TABLE IF NOT EXISTS `impound_data` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `plate` VARCHAR(10) NOT NULL,
+  `vehicle_model` VARCHAR(50),
+  `charge_name` VARCHAR(100),
+  `fee` INT DEFAULT 0,
+  `impound_time` INT DEFAULT 0,
+  `officer_name` VARCHAR(100),
+  `release_time` TIMESTAMP NULL,
+  `timestamp` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX `idx_plate` (`plate`),
+  UNIQUE KEY `unique_plate` (`plate`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```
+
+### 3. ตั้งค่าใน server.cfg  
+```
+ensure nx-parking
 ```
 
 ---
 
-# 📜 Changelog History
+## ⚙️ การตั้งค่า (config.lua)  
+
+ไฟล์ `config.lua` มีตัวเลือกหลัก ๆ ดังนี้  
+
+| ตัวแปร | คำอธิบาย |
+|--------|----------|
+| `Config.Debug` | เปิด/ปิด debug log |
+| `Config.EnableParkCommand` | เปิดคำสั่ง `/park` |
+| `Config.notifyType` | รูปแบบแจ้งเตือน: `'ox'`, `'qb'`, `'chat'` |
+| `Config.DefaultSpawnCoords` | พิกัดเริ่มต้นกรณีไม่มีตำแหน่งรถ |
+| `Config.Depot` | รายการจุด Depot (NPC, จุดเกิดรถ) |
+| `Config.SpawnimpoundCoords` | พิกัดปล่อยรถเมื่อตำรวจปล่อย |
+| `Config.ParkingZones` | โซนจอดรถพร้อมข้อจำกัดอาชีพ |
+| `Config.ImpoundReasons` | เหตุผลในการอายัด พร้อมค่าปรับและเวลา |
+| `Config.Strings` | ข้อความทั้งหมดในระบบ (ภาษาไทย) |
+
+### ตัวอย่างการเพิ่ม Depot
+```lua
+Config.Depot = {
+    {
+        name = "Legion Depot",
+        coords = vector4(408.63, -1623.13, 29.29, 228.48),
+        spawnPoint = { vector4(...), ... },
+        marker = { ... },
+        blip = { ... }
+    }
+}
+```
+
+### ตัวอย่างการเพิ่ม Parking Zone
+```lua
+Config.ParkingZones = {
+    {
+        name = "police_station_1",
+        title = "Police Station Parking",
+        points = { vector2(410.82, -1031.62), ... },
+        minZ = 20.0, maxZ = 40.0,
+        allowJobs = { ['police'] = true, ['ambulance'] = true }
+    }
+}
+```
+
+### การปรับข้อความ  
+ข้อความทั้งหมดอยู่ใน `Config.Strings` สามารถแก้ไขให้ตรงกับภาษา หรือปรับแต่งได้ตามต้องการ  
 
 ---
 
-## [v0.2.0] – Full System Rework
-- Complete architecture rebuild
-- F6 menu removal
-- F1 Radial integration
-- qb-target interaction
-- Improved spawn logic
-- Fine viewing system
-- Backend security overhaul
-- Performance optimization
-- Smart Radial Menu introduction
-- Vehicle diagnostic menu
-- Secure depot payment logic
+## 🎮 การใช้งาน  
+
+### สำหรับผู้เล่นทั่วไป  
+- **จอดรถ**: ขับรถไปยังจุดที่ต้องการ แล้วกดปุ่ม Radial Menu > "จอดรถ" หรือพิมพ์คำสั่ง `/park` (ต้องจอดสนิทและเป็นคนขับ)  
+- **ดูรายชื่อรถ**: กด Radial Menu > "รถที่จอดของฉัน" หรือใช้คำสั่ง `/vehicles` (ถ้ามี)  
+- **เบิกรถ**: ไปที่รถที่จอดไว้ (จะเห็น Target) หรือไปที่ Depot/Impound แล้วเลือกเมนูเบิกรถ  
+- **ตรวจสอบสถานะรถ**: เข้าใกล้รถ → กด Target → "ตรวจสอบสถานะ"  
+- **นำรถออกจาก Depot**: ไปหา NPC ประจำ Depot แล้วเลือก "ดูรถรอเบิก"  
+
+### สำหรับตำรวจ / เจ้าหน้าที่  
+- **อายัดรถ**: เข้าใกล้รถที่ต้องการ → Target → "🛡️ เมนูเจ้าหน้าที่" → เลือกประเภท (Impound/Depot) และเหตุผล  
+- **ตรวจสอบประวัติอายัด**: ไปหา NPC "เจ้าหน้าที่ตรวจสอบ" → เลือก "ตรวจสอบประวัติอายัด" → เลือกผู้เล่นใกล้เคียง  
+- **ปล่อยรถ**: เมื่อครบกำหนด สามารถปล่อยรถให้เจ้าของผ่านเมนูตรวจสอบ  
 
 ---
 
-## [v0.1.1]
-- Security hardening
-- Network ID synchronization fix
-- Anti-duplication improvements
-- Alpha fade spawn transition
+## ⌨️ คำสั่ง  
+- `/park` – จอดรถที่กำลังขับ (ถ้าเปิดใช้งาน)  
 
 ---
 
-## [v0.1.0]
-- Initial release
-- Basic parking persistence system
-- Coordinate & rotation saving
-- Engine/Body/Fuel metadata tracking
+## 🗂️ โครงสร้างฐานข้อมูลที่เกี่ยวข้อง  
+
+### ตาราง `player_vehicles` (ส่วนเพิ่มเติม)
+| คอลัมน์ | ชนิด | คำอธิบาย |
+|--------|------|----------|
+| `state` | INT | 0=ใช้งาน, 1=จอด, 2=อายัด |
+| `depotprice` | INT | ค่าธรรมเนียมที่ต้องจ่ายก่อนเบิก |
+| `parking` | JSON | ข้อมูลการจอด (timestamp, ตำแหน่ง) |
+| `coords` | JSON | พิกัดล่าสุดของรถ |
+| `rotation` | JSON | มุมหันรถ |
+| `fuel` | FLOAT | ระดับน้ำมัน |
+| `engine` | FLOAT | สภาพเครื่องยนต์ |
+| `body` | FLOAT | สภาพตัวถัง |
+
+### ตาราง `impound_data`
+| คอลัมน์ | ชนิด | คำอธิบาย |
+|--------|------|----------|
+| `plate` | VARCHAR | ทะเบียนรถ |
+| `vehicle_model` | VARCHAR | ชื่อโมเดลรถ |
+| `charge_name` | VARCHAR | ข้อหาที่อายัด |
+| `fee` | INT | ค่าปรับ |
+| `impound_time` | INT | ระยะเวลาอายัด (นาที) |
+| `officer_name` | VARCHAR | ชื่อเจ้าหน้าที่ |
+| `release_time` | TIMESTAMP | เวลาที่รถจะถูกปล่อย |
+| `timestamp` | TIMESTAMP | เวลาที่บันทึก |
 
 ---
 
-# 📌 Developer Notes
-
-Version 0.2.0 is a foundational rebuild designed for:
-
-- Long-term scalability
-- Advanced RP server environments
-- Modular expansion
-- Enterprise-level server stability
-
-This is not just an update — it is a structural upgrade.
+## 📸 ภาพตัวอย่าง  
+![ตัวอย่าง](showcase.jpg)  
 
 ---
 
-# ❤️ Built for QBCore Roleplay Servers
+## 🤝 เครดิต  
+- ผู้พัฒนา: **NXRRY**  
+- ขอบคุณทีมงาน QBCore และ Overextended สำหรับ library ต่าง ๆ  
 
-Designed for realism.  
-Optimized for performance.  
-Engineered for expansion.
+---
+
+## 🔗 ลิงก์  
+- GitHub: [https://github.com/NXRRY/nx-parking](https://github.com/NXRRY/nx-parking)  
+- Discord: *กำลังจะเพิ่ม*  
+
+---
+
+## ⚠️ หมายเหตุ  
+- ระบบนี้ถูกออกแบบมาให้ทำงานกับ **QBCore** เท่านั้น  
+- หากพบปัญหาหรือข้อเสนอแนะ กรุณาแจ้งผ่าน GitHub Issues  
+
+---
+
+**© 2025 NXRRY. All rights reserved.**
