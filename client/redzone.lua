@@ -1,10 +1,9 @@
--- parking_zones/client.lua (Refactored)
+-- parking_zones/client.lua
 
 local QBCore = exports['qb-core']:GetCoreObject()
 local PlayerJob = nil
 local CreatedZones = {}
 
--- Global flag used by the main parking script
 insidenoParkingZone = false
 
 -- ============================
@@ -15,7 +14,6 @@ local function updateJob()
     PlayerJob = PlayerData and PlayerData.job and PlayerData.job.name or nil
 end
 
--- Ensure job is set when resource starts or player loads
 AddEventHandler('onResourceStart', function(resourceName)
     if resourceName == GetCurrentResourceName() then
         updateJob()
@@ -31,43 +29,34 @@ end)
 -- 2. ZONE HANDLING HELPERS
 -- ============================
 
---- Build a comma‑separated list of allowed job names (capitalized)
----@param allowJobs table
----@return string
 local function formatAllowedJobList(allowJobs)
     if not allowJobs then return "" end
     local jobs = {}
     for jobName, _ in pairs(allowJobs) do
-        -- Capitalize first letter
         jobs[#jobs + 1] = jobName:gsub("^%l", string.upper)
     end
     return table.concat(jobs, ", ")
 end
 
---- Check if the current player's job is allowed in the zone
----@param allowJobs table
----@return boolean
 local function isJobAllowed(allowJobs)
     if not allowJobs or not PlayerJob then return false end
     return allowJobs[PlayerJob] ~= nil
 end
 
---- Generate the text UI message based on zone and permission
----@param zoneData table
----@param isAllowed boolean
----@param allowedList string
----@return string
 local function buildZoneMessage(zoneData, isAllowed, allowedList)
-    local title = zoneData.title or zoneData.name or "Parking Zone"
-    local statusMsg = isAllowed
-        and "✅ คุณได้รับอนุญาตให้จอดในพื้นที่นี้"
-        or string.format("❌ **เขตห้ามจอด:** เฉพาะ (%s)", allowedList ~= "" and allowedList or "ห้ามจอดทุกอาชีพ")
+    local title = zoneData.title or zoneData.name or Config.Strings.zone_default_title
+    local statusMsg = ""
+
+    if isAllowed then
+        statusMsg = Config.Strings.zone_allowed_msg
+    else
+        local listText = (allowedList ~= "") and allowedList or Config.Strings.zone_no_jobs_msg
+        statusMsg = string.format(Config.Strings.zone_restricted_msg, listText)
+    end
+    
     return string.format("# %s\n---\n%s", title, statusMsg)
 end
 
---- Get the status color and icon based on permission
----@param isAllowed boolean
----@return string color, string icon
 local function getStatusStyle(isAllowed)
     if isAllowed then
         return "#2ecc71", "square-check"
@@ -76,12 +65,9 @@ local function getStatusStyle(isAllowed)
     end
 end
 
---- Show or hide the zone UI
----@param zoneData table
----@param isInside boolean
 local function handleZoneUI(zoneData, isInside)
     if isInside then
-        updateJob()  -- Refresh job in case it changed while outside
+        updateJob()
 
         local isAllowed = isJobAllowed(zoneData.allowJobs)
         insidenoParkingZone = not isAllowed
