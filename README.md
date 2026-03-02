@@ -1,56 +1,56 @@
 # nx-parking  
-**ระบบจอดรถอัจฉริยะสำหรับ FiveM (QBCore)**  
-*พัฒนาโดย NXRRY*
+**Advanced Parking System for FiveM (QBCore)**  
+*Developed by NXRRY*
 
 ---
 
-## 📌 คำอธิบาย  
-nx-parking คือระบบจอดรถที่ช่วยให้ผู้เล่นสามารถ **จอดรถไว้ที่ไหนก็ได้** (ไม่จำเป็นต้องถึงโรงรถ) และระบบจะบันทึกสภาพรถ (น้ำมัน เครื่องยนต์ ตัวถัง) รวมถึงตำแหน่งล่าสุดไว้ในฐานข้อมูล รถที่จอดไว้จะถูกซ่อนไว้และสามารถนำออกมาใช้ใหม่ได้ทุกเมื่อผ่านเมนู หรือผ่านตู้/NPC ที่กำหนด  
+## 📌 Description  
+nx-parking is an intelligent parking system that allows players to **park their vehicle anywhere** (not limited to garages). The system saves the vehicle’s condition (fuel, engine, body health) and last known location in the database. Parked vehicles are hidden and can be retrieved at any time via a menu, or through depot NPCs.  
 
-ระบบยังรองรับ **การจำกัดพื้นที่จอดตามอาชีพ** (โซนจอด) และ **การอายัดรถโดยตำรวจ** พร้อมค่าปรับและระยะเวลาอายัด ผู้เล่นสามารถไถ่ถอนรถได้ที่ Depots หรือติดต่อเจ้าหน้าที่
-
----
-
-## ✨ คุณสมบัติหลัก  
-- ✅ จอดรถได้ทุกที่ (นอกเหนือโซนหวงห้าม)  
-- ✅ บันทึกสภาพรถ (น้ำมัน, เครื่องยนต์, ตัวถัง, ตำแหน่ง)  
-- ✅ ระบบโซนจอด (Parking Zones) จำกัดตามอาชีพ  
-- ✅ เมนูตรวจสอบสถานะรถ (ระยะทาง, สภาพ, ตำแหน่ง)  
-- ✅ ระบบอายัดรถโดยตำรวจ (Impound) พร้อมเหตุผล ค่าปรับ และเวลาอายัด  
-- ✅ ส่งรถไปยัง Depot สาธารณะ  
-- ✅ รับรถคืนจาก Depot / Impound ผ่าน NPC  
-- ✅ ตั้งค่า GPS ไปยังตำแหน่งรถที่จอดไว้  
-- ✅ รองรับ Radial Menu (qb-radialmenu)  
-- ✅ รองรับ Target (qb-target)  
-- ✅ รองรับการแจ้งเตือนหลายรูปแบบ (ox, qb, chat)  
-- ✅ ระบบตรวจสอบเวอร์ชันอัตโนมัติ  
+The system also supports **job-restricted parking zones** and **police impound** with fines and duration. Players can retrieve impounded vehicles from depots or contact officers.
 
 ---
 
-## 🔧 ความต้องการ (Dependencies)  
+## ✨ Key Features  
+- ✅ Park anywhere (outside restricted zones)  
+- ✅ Saves vehicle condition (fuel, engine, body, location)  
+- ✅ Parking zones with job restrictions  
+- ✅ Vehicle status check (distance, condition, location)  
+- ✅ Police impound system with reasons, fines, and duration  
+- ✅ Send vehicle to public depot  
+- ✅ Retrieve vehicles from depot/impound via NPC  
+- ✅ Set GPS to parked vehicle location  
+- ✅ Radial menu support (qb-radialmenu)  
+- ✅ Target interaction (qb-target)  
+- ✅ Multiple notification systems (ox, qb, chat)  
+- ✅ Automatic version check  
+
+---
+
+## 🔧 Dependencies  
 - [QBCore](https://github.com/qbcore-framework)  
 - [ox_lib](https://github.com/overextended/ox_lib)  
 - [PolyZone](https://github.com/mkafrin/PolyZone)  
 - [qb-target](https://github.com/qbcore-framework/qb-target)  
-- [LegacyFuel](https://github.com/InZidiuZ/LegacyFuel) (หรือระบบน้ำมันอื่นที่ compatible)  
-- [qb-radialmenu](https://github.com/qbcore-framework/qb-radialmenu) (ไม่บังคับ แต่แนะนำ)  
+- [LegacyFuel](https://github.com/InZidiuZ/LegacyFuel) (or any compatible fuel system)  
+- [qb-radialmenu](https://github.com/qbcore-framework/qb-radialmenu) (optional but recommended)  
 
 ---
 
-## 📥 การติดตั้ง  
+## 📥 Installation  
 
-### 1. ดาวน์โหลดและวางไฟล์  
-- ดาวน์โหลดสคริปต์จาก GitHub  
-- วางโฟลเดอร์ `nx-parking` ใน `resources` ของเซิร์ฟเวอร์  
+### 1. Download and Place Files  
+- Download the script from GitHub  
+- Place the `nx-parking` folder in your server's `resources` directory  
 
-### 2. เตรียมฐานข้อมูล  
-รันคำสั่ง SQL ต่อไปนี้ในฐานข้อมูลเซิร์ฟเวอร์ของคุณ  
-(ตรวจสอบว่าตาราง `player_vehicles` มีอยู่แล้ว ถ้ายังไม่มีให้สร้างตาม QBcore)
+### 2. Database Setup  
+Run the following SQL queries in your server database.  
+(Ensure the `player_vehicles` table exists; if not, create it as per QBcore standards.)
 
 ```sql
--- เพิ่มคอลัมน์ที่จำเป็นในตาราง player_vehicles (ถ้ายังไม่มี)
+-- Add required columns to player_vehicles (if not present)
 ALTER TABLE `player_vehicles` 
-ADD COLUMN `state` INT DEFAULT 0, -- 0 = ใช้งาน, 1 = จอด, 2 = อายัด
+ADD COLUMN `state` INT DEFAULT 0, -- 0 = active, 1 = parked, 2 = impounded
 ADD COLUMN `depotprice` INT DEFAULT 0,
 ADD COLUMN `parking` LONGTEXT DEFAULT NULL,
 ADD COLUMN `coords` LONGTEXT DEFAULT NULL,
@@ -59,7 +59,7 @@ ADD COLUMN `fuel` FLOAT DEFAULT 100,
 ADD COLUMN `engine` FLOAT DEFAULT 1000,
 ADD COLUMN `body` FLOAT DEFAULT 1000;
 
--- สร้างตาราง impound_data สำหรับเก็บประวัติการอายัด
+-- Create impound_data table for impound history
 CREATE TABLE IF NOT EXISTS `impound_data` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `plate` VARCHAR(10) NOT NULL,
@@ -75,30 +75,30 @@ CREATE TABLE IF NOT EXISTS `impound_data` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
-### 3. ตั้งค่าใน server.cfg  
+### 3. Add to server.cfg  
 ```
 ensure nx-parking
 ```
 
 ---
 
-## ⚙️ การตั้งค่า (config.lua)  
+## ⚙️ Configuration (config.lua)  
 
-ไฟล์ `config.lua` มีตัวเลือกหลัก ๆ ดังนี้  
+The main configuration options in `config.lua`:
 
-| ตัวแปร | คำอธิบาย |
-|--------|----------|
-| `Config.Debug` | เปิด/ปิด debug log |
-| `Config.EnableParkCommand` | เปิดคำสั่ง `/park` |
-| `Config.notifyType` | รูปแบบแจ้งเตือน: `'ox'`, `'qb'`, `'chat'` |
-| `Config.DefaultSpawnCoords` | พิกัดเริ่มต้นกรณีไม่มีตำแหน่งรถ |
-| `Config.Depot` | รายการจุด Depot (NPC, จุดเกิดรถ) |
-| `Config.SpawnimpoundCoords` | พิกัดปล่อยรถเมื่อตำรวจปล่อย |
-| `Config.ParkingZones` | โซนจอดรถพร้อมข้อจำกัดอาชีพ |
-| `Config.ImpoundReasons` | เหตุผลในการอายัด พร้อมค่าปรับและเวลา |
-| `Config.Strings` | ข้อความทั้งหมดในระบบ (ภาษาไทย) |
+| Variable | Description |
+|----------|-------------|
+| `Config.Debug` | Enable/disable debug logging |
+| `Config.EnableParkCommand` | Enable `/park` command |
+| `Config.notifyType` | Notification style: `'ox'`, `'qb'`, or `'chat'` |
+| `Config.DefaultSpawnCoords` | Default spawn coordinates if no vehicle data |
+| `Config.Depot` | List of depot locations (NPC, spawn points) |
+| `Config.SpawnimpoundCoords` | Spawn coordinates when police release vehicle |
+| `Config.ParkingZones` | Parking zones with job restrictions |
+| `Config.ImpoundReasons` | Impound reasons with fines and duration |
+| `Config.Strings` | All UI strings (customizable) |
 
-### ตัวอย่างการเพิ่ม Depot
+### Example: Adding a Depot
 ```lua
 Config.Depot = {
     {
@@ -111,7 +111,7 @@ Config.Depot = {
 }
 ```
 
-### ตัวอย่างการเพิ่ม Parking Zone
+### Example: Adding a Parking Zone
 ```lua
 Config.ParkingZones = {
     {
@@ -124,80 +124,80 @@ Config.ParkingZones = {
 }
 ```
 
-### การปรับข้อความ  
-ข้อความทั้งหมดอยู่ใน `Config.Strings` สามารถแก้ไขให้ตรงกับภาษา หรือปรับแต่งได้ตามต้องการ  
+### Customizing Strings  
+All text displayed to players is located in `Config.Strings`. You can modify them to match your server's language or preference.
 
 ---
 
-## 🎮 การใช้งาน  
+## 🎮 Usage  
 
-### สำหรับผู้เล่นทั่วไป  
-- **จอดรถ**: ขับรถไปยังจุดที่ต้องการ แล้วกดปุ่ม Radial Menu > "จอดรถ" หรือพิมพ์คำสั่ง `/park` (ต้องจอดสนิทและเป็นคนขับ)  
-- **ดูรายชื่อรถ**: กด Radial Menu > "รถที่จอดของฉัน" หรือใช้คำสั่ง `/vehicles` (ถ้ามี)  
-- **เบิกรถ**: ไปที่รถที่จอดไว้ (จะเห็น Target) หรือไปที่ Depot/Impound แล้วเลือกเมนูเบิกรถ  
-- **ตรวจสอบสถานะรถ**: เข้าใกล้รถ → กด Target → "ตรวจสอบสถานะ"  
-- **นำรถออกจาก Depot**: ไปหา NPC ประจำ Depot แล้วเลือก "ดูรถรอเบิก"  
+### For Regular Players  
+- **Park Vehicle**: Drive to desired spot, then use Radial Menu > "Park Vehicle" or type `/park` (must be stationary and driver).  
+- **View Vehicle List**: Radial Menu > "My Parked Vehicles" or use `/vehicles` command if available.  
+- **Retrieve Vehicle**: Approach a parked vehicle (target appears) or go to a Depot/Impound NPC and select the vehicle.  
+- **Check Vehicle Status**: Approach vehicle → Target > "Check Vehicle Status".  
+- **Retrieve from Depot**: Go to Depot NPC → "View Pending Vehicles".  
 
-### สำหรับตำรวจ / เจ้าหน้าที่  
-- **อายัดรถ**: เข้าใกล้รถที่ต้องการ → Target → "🛡️ เมนูเจ้าหน้าที่" → เลือกประเภท (Impound/Depot) และเหตุผล  
-- **ตรวจสอบประวัติอายัด**: ไปหา NPC "เจ้าหน้าที่ตรวจสอบ" → เลือก "ตรวจสอบประวัติอายัด" → เลือกผู้เล่นใกล้เคียง  
-- **ปล่อยรถ**: เมื่อครบกำหนด สามารถปล่อยรถให้เจ้าของผ่านเมนูตรวจสอบ  
-
----
-
-## ⌨️ คำสั่ง  
-- `/park` – จอดรถที่กำลังขับ (ถ้าเปิดใช้งาน)  
+### For Police / Officers  
+- **Impound Vehicle**: Approach target vehicle → Target > "🛡️ Law Enforcement Menu" → choose action (Impound/Depot) and reason.  
+- **Check Impound Records**: Go to "Impound Officer" NPC → "Search Impound Records" → select nearby citizen.  
+- **Release Vehicle**: When impound time expires, can release vehicle to owner via the check menu.  
 
 ---
 
-## 🗂️ โครงสร้างฐานข้อมูลที่เกี่ยวข้อง  
-
-### ตาราง `player_vehicles` (ส่วนเพิ่มเติม)
-| คอลัมน์ | ชนิด | คำอธิบาย |
-|--------|------|----------|
-| `state` | INT | 0=ใช้งาน, 1=จอด, 2=อายัด |
-| `depotprice` | INT | ค่าธรรมเนียมที่ต้องจ่ายก่อนเบิก |
-| `parking` | JSON | ข้อมูลการจอด (timestamp, ตำแหน่ง) |
-| `coords` | JSON | พิกัดล่าสุดของรถ |
-| `rotation` | JSON | มุมหันรถ |
-| `fuel` | FLOAT | ระดับน้ำมัน |
-| `engine` | FLOAT | สภาพเครื่องยนต์ |
-| `body` | FLOAT | สภาพตัวถัง |
-
-### ตาราง `impound_data`
-| คอลัมน์ | ชนิด | คำอธิบาย |
-|--------|------|----------|
-| `plate` | VARCHAR | ทะเบียนรถ |
-| `vehicle_model` | VARCHAR | ชื่อโมเดลรถ |
-| `charge_name` | VARCHAR | ข้อหาที่อายัด |
-| `fee` | INT | ค่าปรับ |
-| `impound_time` | INT | ระยะเวลาอายัด (นาที) |
-| `officer_name` | VARCHAR | ชื่อเจ้าหน้าที่ |
-| `release_time` | TIMESTAMP | เวลาที่รถจะถูกปล่อย |
-| `timestamp` | TIMESTAMP | เวลาที่บันทึก |
+## ⌨️ Commands  
+- `/park` – Park the current vehicle (if enabled)  
 
 ---
 
-## 📸 ภาพตัวอย่าง  
-![ตัวอย่าง](showcase.jpg)  
+## 🗂️ Database Structure (Additional Columns)  
+
+### Table `player_vehicles` (extended)
+| Column | Type | Description |
+|--------|------|-------------|
+| `state` | INT | 0=active, 1=parked, 2=impounded |
+| `depotprice` | INT | Fee required before retrieval |
+| `parking` | JSON | Parking info (timestamp, location) |
+| `coords` | JSON | Last known coordinates |
+| `rotation` | JSON | Vehicle rotation |
+| `fuel` | FLOAT | Fuel level |
+| `engine` | FLOAT | Engine health |
+| `body` | FLOAT | Body health |
+
+### Table `impound_data`
+| Column | Type | Description |
+|--------|------|-------------|
+| `plate` | VARCHAR | License plate |
+| `vehicle_model` | VARCHAR | Vehicle model name |
+| `charge_name` | VARCHAR | Impound reason |
+| `fee` | INT | Fine amount |
+| `impound_time` | INT | Impound duration (minutes) |
+| `officer_name` | VARCHAR | Name of the officer |
+| `release_time` | TIMESTAMP | Time when vehicle can be released |
+| `timestamp` | TIMESTAMP | Record creation time |
 
 ---
 
-## 🤝 เครดิต  
-- ผู้พัฒนา: **NXRRY**  
-- ขอบคุณทีมงาน QBCore และ Overextended สำหรับ library ต่าง ๆ  
+## 📸 Screenshots  
+![Screenshot](images/showcase.jpg)  
 
 ---
 
-## 🔗 ลิงก์  
+## 🤝 Credits  
+- Developer: **NXRRY**  
+- Thanks to QBCore team and Overextended for their libraries.  
+
+---
+
+## 🔗 Links  
 - GitHub: [https://github.com/NXRRY/nx-parking](https://github.com/NXRRY/nx-parking)  
-- Discord: *กำลังจะเพิ่ม*  
+- Discord: *Coming soon*  
 
 ---
 
-## ⚠️ หมายเหตุ  
-- ระบบนี้ถูกออกแบบมาให้ทำงานกับ **QBCore** เท่านั้น  
-- หากพบปัญหาหรือข้อเสนอแนะ กรุณาแจ้งผ่าน GitHub Issues  
+## ⚠️ Notes  
+- This script is designed to work with **QBCore** only.  
+- If you encounter issues or have suggestions, please open an issue on GitHub.  
 
 ---
 
