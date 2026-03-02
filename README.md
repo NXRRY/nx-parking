@@ -181,56 +181,6 @@ Planned features:
 
 # 🛠 Installation Guide
 
-## 1️⃣ Radial Menu Setup
-
-Open `qb-radialmenu/client/main.lua` and locate:
-
-```lua
-SetupSubItems()
-```
-
-Add this function:
-
-```lua
-local function SetupParkingMenu()
-    local ped = PlayerPedId()
-    local Vehicle = GetVehiclePedIsIn(ped, false)
-    local vehicleMenu = nil 
-
-    if Vehicle ~= 0 then
-        vehicleMenu = {
-            id = 'park_vehicle',
-            title = 'Park Vehicle',
-            icon = 'square-parking',
-            type = 'client',
-            event = 'parking:client:parkVehicle',
-            shouldClose = true
-        }
-    else
-        vehicleMenu = {
-            id = 'parked_list',
-            title = 'Parked Vehicles',
-            icon = 'clipboard-list',
-            type = 'client',
-            event = 'parking:client:openParkingList',
-            shouldClose = true
-        }
-    end
-
-    if vehicleMenu then
-        exports['qb-radialmenu']:AddOption(vehicleMenu)
-    end
-end
-```
-
-Then call it inside `SetupSubItems()`:
-
-```lua
-SetupParkingMenu()
-```
-
----
-
 ## 2️⃣ SQL Setup
 
 Execute in your database:
