@@ -1,6 +1,7 @@
 -- parking/server.lua (Refactored)
 
 local QBCore = exports['qb-core']:GetCoreObject()
+local strings = Config.Strings  -- ใช้ข้อความจาก Config
 
 -- ============================
 -- 1. HELPER FUNCTIONS
@@ -78,7 +79,7 @@ QBCore.Functions.CreateCallback('parking:server:checkOwnership', function(source
 
     -- เช็คทั้งทะเบียน และ CitizenID ของผู้เล่นที่เรียกใช้งาน
     MySQL.scalar('SELECT 1 FROM player_vehicles WHERE plate = ? AND citizenid = ?', {
-        plate, 
+        plate,
         Player.PlayerData.citizenid
     }, function(result)
         cb(result ~= nil) -- ถ้ามีข้อมูลส่ง true, ถ้าไม่มีส่ง false
@@ -98,9 +99,9 @@ QBCore.Functions.CreateCallback('parking:server:getImpoundedVehicles', function(
 
     -- ดึงข้อมูลรถจาก player_vehicles ที่มีข้อมูลใน impound_data
     MySQL.query([[
-        SELECT v.vehicle, v.plate, i.charge_name, i.fee, i.timestamp, i.release_time 
-        FROM player_vehicles v 
-        INNER JOIN impound_data i ON v.plate = i.plate 
+        SELECT v.vehicle, v.plate, i.charge_name, i.fee, i.timestamp, i.release_time
+        FROM player_vehicles v
+        INNER JOIN impound_data i ON v.plate = i.plate
         WHERE v.citizenid = ? AND v.state = 2
     ]], {citizenid}, function(results)
         local vehicles = {}
@@ -134,12 +135,10 @@ QBCore.Functions.CreateCallback('parking:server:getImpoundedVehicles', function(
     end)
 end)
 
-
-
 QBCore.Functions.CreateCallback('parking:server:getNearbyPlayersInfo', function(source, cb, playerIds)
     local pOptions = {}
     for _, id in ipairs(playerIds) do
-        local Player = QBCore.Functions.GetPlayer(id) -- นี่คือจุดที่คุณต้องการ!
+        local Player = QBCore.Functions.GetPlayer(id)
         if Player then
             table.insert(pOptions, {
                 -- แสดงชื่อและ CitizenID ให้ตำรวจเห็นในเมนูเลือก
@@ -150,6 +149,7 @@ QBCore.Functions.CreateCallback('parking:server:getNearbyPlayersInfo', function(
     end
     cb(pOptions)
 end)
+
 -- ============================
 -- 3. SERVER EVENTS
 -- ============================
@@ -279,7 +279,7 @@ RegisterNetEvent('parking:server:payAndTakeOut', function(netId, plate)
         Player.PlayerData.citizenid
     }, function(price)
         if price == nil then
-            TriggerClientEvent('QBCore:Notify', src, 'ไม่พบข้อมูลรถ', 'error')
+            TriggerClientEvent('parking:client:notify', src, strings.vehicle_not_found_data, 'error')
             return
         end
 
@@ -295,9 +295,9 @@ RegisterNetEvent('parking:server:payAndTakeOut', function(netId, plate)
         if attemptPayment(src, price) then
             MySQL.update('UPDATE player_vehicles SET depotprice = 0 WHERE plate = ?', {plate})
             TriggerClientEvent('parking:client:takeOutVehicle', src, netId)
-            TriggerClientEvent('QBCore:Notify', src, 'ชำระค่าธรรมเนียม $' .. price .. ' เรียบร้อยแล้ว', 'success')
+            TriggerClientEvent('parking:client:notify', src, string.format(strings.payment_success, price), 'success')
         else
-            TriggerClientEvent('QBCore:Notify', src, 'คุณมีเงินไม่เพียงพอสำหรับการเบิกรถ!', 'error')
+            TriggerClientEvent('parking:client:notify', src, strings.insufficient_funds, 'error')
         end
     end)
 end)
@@ -315,7 +315,7 @@ RegisterNetEvent('parking:server:takeOutVehicleDepot', function(plate, index)
         Player.PlayerData.citizenid
     }, function(result)
         if not result or not result[1] then
-            TriggerClientEvent('QBCore:Notify', src, 'ไม่พบข้อมูลรถ', 'error')
+            TriggerClientEvent('parking:client:notify', src, strings.vehicle_not_found_data, 'error')
             return
         end
 
@@ -339,12 +339,12 @@ RegisterNetEvent('parking:server:takeOutVehicleDepot', function(plate, index)
             TriggerClientEvent('parking:client:spawnVehicleFromDepot', src, plate, mods, index)
 
             if price > 0 then
-                TriggerClientEvent('QBCore:Notify', src, 'ชำระค่าธรรมเนียม $' .. price .. ' เรียบร้อย', 'success')
+                TriggerClientEvent('parking:client:notify', src, string.format(strings.payment_success, price), 'success')
             else
-                TriggerClientEvent('QBCore:Notify', src, 'เบิกรถเรียบร้อย (ไม่มีค่าธรรมเนียม)', 'success')
+                TriggerClientEvent('parking:client:notify', src, strings.retrieve_free_success, 'success')
             end
         else
-            TriggerClientEvent('QBCore:Notify', src, 'คุณมีเงินไม่พอจ่าย (ต้องการ $' .. price .. ')', 'error')
+            TriggerClientEvent('parking:client:notify', src, string.format(strings.insufficient_funds_required, price), 'error')
         end
     end)
 end)
@@ -352,15 +352,16 @@ end)
 RegisterNetEvent('parking:server:processImpound', function(netId, plate, actionType, finePrice, impoundTimeMinutes, reason)
     local src = source
     local Player = QBCore.Functions.GetPlayer(src)
-    
+
     -- Security Check: ตรวจสอบความเป็นตำรวจ
-    if not Player or Player.PlayerData.job.name ~= "police" then 
-        return 
+    if not Player or Player.PlayerData.job.name ~= "police" then
+        return
     end
 
     local vehicle = NetworkGetEntityFromNetworkId(netId)
     if not DoesEntityExist(vehicle) then
-        return TriggerClientEvent('QBCore:Notify', src, 'ไม่พบ Entity ยานพาหนะ (อาจหลุด Sync)', 'error')
+        TriggerClientEvent('parking:client:notify', src, strings.vehicle_entity_not_found, 'error')
+        return
     end
 
     local officerName = Player.PlayerData.charinfo.firstname .. " " .. Player.PlayerData.charinfo.lastname
@@ -375,25 +376,25 @@ RegisterNetEvent('parking:server:processImpound', function(netId, plate, actionT
         -- CASE: IMPOUND (ยึดโดยเจ้าหน้าที่)
         -- ============================
         MySQL.update('UPDATE player_vehicles SET state = 2, depotprice = ? WHERE plate = ?', {
-            finePrice, 
+            finePrice,
             plate
         }, function(rowsChanged)
             if rowsChanged > 0 then
                 MySQL.insert([[
-                    INSERT INTO impound_data 
-                    (plate, vehicle_model, charge_name, fee, impound_time, officer_name, release_time) 
+                    INSERT INTO impound_data
+                    (plate, vehicle_model, charge_name, fee, impound_time, officer_name, release_time)
                     VALUES (?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL ? MINUTE))
-                    ON DUPLICATE KEY UPDATE 
-                    charge_name = VALUES(charge_name), 
-                    fee = VALUES(fee), 
-                    impound_time = VALUES(impound_time), 
-                    officer_name = VALUES(officer_name), 
+                    ON DUPLICATE KEY UPDATE
+                    charge_name = VALUES(charge_name),
+                    fee = VALUES(fee),
+                    impound_time = VALUES(impound_time),
+                    officer_name = VALUES(officer_name),
                     release_time = DATE_ADD(NOW(), INTERVAL ? MINUTE)
                 ]], {
                     plate, tostring(vehicleModel), reason, finePrice,
                     impoundTimeMinutes, officerName, impoundTimeMinutes, impoundTimeMinutes
                 })
-                TriggerClientEvent('QBCore:Notify', src, 'อายัดรถทะเบียน '..plate..' เรียบร้อย (State 2)', 'success')
+                TriggerClientEvent('parking:client:notify', src, string.format(strings.impound_success, plate), 'success')
             end
         end)
 
@@ -409,7 +410,7 @@ RegisterNetEvent('parking:server:processImpound', function(netId, plate, actionT
             if rowsChanged > 0 then
                 -- ลบข้อมูลเก่าใน impound_data ออก (ถ้ามี) เพื่อให้สถานะสะอาด
                 MySQL.execute('DELETE FROM impound_data WHERE plate = ?', {plate})
-                TriggerClientEvent('QBCore:Notify', src, 'ส่งรถทะเบียน '..plate..' ไปยังที่เก็บรถกลาง (State 0)', 'primary')
+                TriggerClientEvent('parking:client:notify', src, string.format(strings.depot_success, plate), 'inform')
             end
         end)
     end
@@ -429,9 +430,9 @@ RegisterNetEvent('parking:server:getOfficerCheckImpound', function(targetId)
     local citizenName = Citizen.PlayerData.charinfo.firstname .. " " .. Citizen.PlayerData.charinfo.lastname
 
     MySQL.query([[
-        SELECT v.vehicle, v.plate, i.charge_name, i.fee, i.timestamp, i.release_time 
-        FROM player_vehicles v 
-        INNER JOIN impound_data i ON v.plate = i.plate 
+        SELECT v.vehicle, v.plate, i.charge_name, i.fee, i.timestamp, i.release_time
+        FROM player_vehicles v
+        INNER JOIN impound_data i ON v.plate = i.plate
         WHERE v.citizenid = ? AND v.state = 2
     ]], {citizenid}, function(results)
         local vehicles = {}
@@ -476,7 +477,7 @@ RegisterNetEvent('parking:server:releaseVehicleByOfficer', function(plate, spawn
         if vehicleData then
             local ownerCID = vehicleData.citizenid
             local TargetPlayer = QBCore.Functions.GetPlayerByCitizenId(ownerCID)
-            
+
             -- ดึงข้อมูล mods จากฐานข้อมูล (ชื่อคอลัมน์มักจะเป็น 'mods')
             local mods = vehicleData.mods
 
@@ -485,29 +486,26 @@ RegisterNetEvent('parking:server:releaseVehicleByOfficer', function(plate, spawn
             MySQL.execute('DELETE FROM impound_data WHERE plate = ?', {plate})
 
             -- 2. ส่งค่า mods (vehicleData.mods) ไปที่ Client
-            -- แก้จาก vehicleMods เป็น mods (หรือ vehicleData.mods)
             TriggerClientEvent('parking:client:spawnReleasedVehicle', src, vehicleData.vehicle, plate, spawnCoords, mods)
-            
+
             -- 3. แจ้งเตือนตำรวจ
-            TriggerClientEvent('QBCore:Notify', src, 'คืนรถทะเบียน '..plate..' เรียบร้อยแล้ว', 'success')
-            
+            TriggerClientEvent('parking:client:notify', src, string.format(strings.release_success_officer, plate), 'success')
+
             -- 4. ส่งกุญแจให้เจ้าของ
             if TargetPlayer then
                 TriggerClientEvent('vehiclekeys:client:SetOwner', TargetPlayer.PlayerData.source, plate)
-                TriggerClientEvent('QBCore:Notify', TargetPlayer.PlayerData.source, 'รถของคุณถูกปล่อยตัวแล้ว กุญแจอยู่ที่คุณ', 'primary')
+                TriggerClientEvent('parking:client:notify', TargetPlayer.PlayerData.source, strings.vehicle_released_notify, 'inform')
             end
         else
-            TriggerClientEvent('QBCore:Notify', src, 'ไม่พบข้อมูลยานพาหนะคันนี้', 'error')
+            TriggerClientEvent('parking:client:notify', src, strings.vehicle_not_found, 'error')
         end
     end)
 end)
 
-
-
 RegisterNetEvent('baseevents:enteredVehicle', function()
-    TriggerClientEvent('parking:client:radialmenusetup',source,'park')
+    TriggerClientEvent('parking:client:radialmenusetup', source, 'park')
 end)
 
 RegisterNetEvent('baseevents:leftVehicle', function()
-    TriggerClientEvent('parking:client:radialmenusetup',source,'list')
+    TriggerClientEvent('parking:client:radialmenusetup', source, 'list')
 end)
