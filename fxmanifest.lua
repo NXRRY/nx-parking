@@ -4,7 +4,7 @@ lua54 'yes'
 use_fxv2_oal 'yes'
 author 'NXRRY'
 description 'A parking system for FiveM servers.'
-version '0.2.0'
+version '1.0.0'
 
 shared_scripts {
     '@qb-core/shared/locale.lua',
